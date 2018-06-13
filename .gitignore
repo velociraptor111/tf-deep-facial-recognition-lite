@@ -3,6 +3,7 @@ __pycache__/
 # Ignore all the models neccesary for inference. Will create a download script from google drive
 model/
 facenet/models
+.idea
 
 # Ignore any potentials temporary folders
 temp_roi/

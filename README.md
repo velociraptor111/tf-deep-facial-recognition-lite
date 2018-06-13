@@ -13,3 +13,8 @@ Object Detection and Recognition pipeline using Single Shot Multibox Detector (S
 
 ## Installation
 
+## TODO:
+- Create a download script to download weights from google drive
+- Write comments on the different functions
+- Configure webcam script to work with GPU (Zain)
+
