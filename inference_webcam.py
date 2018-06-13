@@ -23,7 +23,7 @@ PATH_TO_CKPT = './model/frozen_inference_graph_custom.pb'
 TARGET_ROOT_TEMP_DIR = './temp_roi'
 FINAL_DETECTION_PATH = './final_detection'
 FACENET_MODEL_PATH = './facenet/models/facenet/20180402-114759/20180402-114759.pb'
-CLASSIFIER_PATH = './facenet/models/selfies_classifier.pkl'
+CLASSIFIER_PATH = './facenet/models/selfies_classifier_v2.pkl'
 
 NUM_CLASSES = 2
 CROP_SSD_PERCENTAGE = 0.3
