@@ -4,6 +4,7 @@ __pycache__/
 model/
 facenet/models
 .idea
+final_detection/
 
 # Ignore any potentials temporary folders
 temp_roi/

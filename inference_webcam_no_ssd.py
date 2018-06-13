@@ -20,9 +20,6 @@ from src.utils import *
 
 # Path to frozen detection graph. This is the actual model that is used for the object detection.
 PATH_TO_CKPT = './model/frozen_inference_graph_custom.pb'
-SOURCE_IM_PATH_ARRAY = ['./images/image_2.jpg', './images/image_3.jpg', './images/image_2.jpg', './images/image_3.jpg',
-                        './images/image_2.jpg', './images/image_3.jpg', './images/image_2.jpg', './images/image_3.jpg',
-                        './images/image_2.jpg', './images/image_3.jpg']
 TARGET_ROOT_TEMP_DIR = './temp_roi_no_ssd'
 FINAL_DETECTION_PATH = './final_detection'
 FACENET_MODEL_PATH = './facenet/models/facenet/20180402-114759/20180402-114759.pb'
@@ -47,13 +44,18 @@ if __name__ == "__main__":
             embeddings = tf.get_default_graph().get_tensor_by_name("embeddings:0")
             phase_train_placeholder = tf.get_default_graph().get_tensor_by_name("phase_train:0")
 
-            for image_id, SOURCE_IM_PATH in enumerate(SOURCE_IM_PATH_ARRAY):
+            frame_num = 1490
+            cap = cv2.VideoCapture(0)
+            while frame_num:
+                frame_num -= 1
                 initial_inference_start_time = time.time()
                 if not os.path.isdir(TARGET_ROOT_TEMP_DIR):
                     os.makedirs(TARGET_ROOT_TEMP_DIR)
 
-                image = cv2.imread(SOURCE_IM_PATH)
-                # image = cv2.resize(image, (250, 250), interpolation=cv2.INTER_AREA) #Apparently when not resized its better ?
+                ret, image = cap.read()
+                if ret == 0:
+                    break
+
                 image_np = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
                 image_np_expanded = np.expand_dims(image_np, axis=0)
 
@@ -112,10 +114,13 @@ if __name__ == "__main__":
                     else:
                         cv2.putText(image, 'Unknown Face', (int(bbox_face[0]), int(bbox_face[1]) + 10), 0, 0.6, (0, 255, 0))
 
-                cv2.imwrite(os.path.join(FINAL_DETECTION_PATH, 'final_detection_no_ssd_' + str(image_id) + '.jpg'), image)
+                cv2.imshow('image_view', image)
 
                 for i in range(len(best_class_indices)):
                     print('%4d  %s: %.3f' % (i, class_names[best_class_indices[i]], best_class_probabilities[i]))
+
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
 
 
 
