@@ -1,2 +1,4 @@
 model/
 facenet/models
+temp_roi/
+__pycache__/
