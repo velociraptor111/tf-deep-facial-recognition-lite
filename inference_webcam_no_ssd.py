@@ -85,13 +85,9 @@ if __name__ == "__main__":
                         print('Calculating image embedding cost: {}'.format(function_timer))
 
                     shutil.rmtree(TARGET_ROOT_TEMP_DIR)
-                    function_timer_start = time.time()
                     ### Loading the SVM classifier ###
                     with open(CLASSIFIER_PATH, 'rb') as infile:
                         (model, class_names) = pickle.load(infile)
-                    function_timer = time.time() - function_timer_start
-                    print('Loading in SVM classifier cost: {}'.format(function_timer))
-
                     function_timer_start = time.time()
                     predictions = model.predict_proba(emb_array)
                     function_timer = time.time() - function_timer_start

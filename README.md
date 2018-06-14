@@ -14,6 +14,7 @@ Object Detection and Recognition pipeline using Single Shot Multibox Detector (S
 ## Installation
 
 ## Notes:
+- It has been found that using SSD with Mobile Net (Trained on WIDER FACE Dataset) for Face Detection as opposed to using MTCNN for Face Detection is faster in events where there contains more than one faces in an image. Moreover, it is also better in creating a tight bounding box.
 - This repository is still under heavy development.
 
 ## TODO:

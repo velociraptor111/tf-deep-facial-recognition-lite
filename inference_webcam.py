@@ -29,6 +29,7 @@ NUM_CLASSES = 2
 CROP_SSD_PERCENTAGE = 0.3
 IMAGE_SIZE = 160
 FACENET_PREDICTION_BATCH_SIZE = 90
+MAX_FRAME_COUNT = 1490
 
 if __name__ == "__main__":
 
@@ -43,14 +44,13 @@ if __name__ == "__main__":
     with sess.as_default():
       ### Creating and Loading MTCNN ###
       pnet, rnet, onet = align.detect_face.create_mtcnn(sess, None)
-
       ### Creating and Loading the Facenet Graph ###
       images_placeholder, embeddings, phase_train_placeholder = load_tf_facenet_graph(FACENET_MODEL_PATH)
-      frame_num = 1490
+      
       cap = cv2.VideoCapture(0)
 
-      while frame_num:
-        frame_num -= 1
+      while MAX_FRAME_COUNT:
+        MAX_FRAME_COUNT -= 1
         ret, image = cap.read()
         if ret == 0:
             break
@@ -58,8 +58,7 @@ if __name__ == "__main__":
         if not os.path.isdir(TARGET_ROOT_TEMP_DIR):
           os.makedirs(TARGET_ROOT_TEMP_DIR)
 
-        # image = cv2.imread(SOURCE_IM_PATH)
-        image_np = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) # Convert image to RGB to pass on SSD detector
+        image_np = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) # Convert image from BGR to RGB to pass on SSD detector
         image_np_expanded = np.expand_dims(image_np, axis=0)
 
         start_time_ssd_detection = time.time()
@@ -70,44 +69,34 @@ if __name__ == "__main__":
         print('SSD inference time cost: {}'.format(elapsed_time))
 
         dets = post_process_ssd_predictions(boxes,scores,classes)
-        print("###################")
-        print(dets.shape)
         im_height = image.shape[0]
         im_width = image.shape[1]
 
-        bbox_dict = {}  #This dictionary will hold all the bounding box location associated with the detection_id per image
-
-        # For each of the detection boxes in dets, need to pass it to Facenet after using the facenet load data
+        bbox_dict = {}
+        paths = []
+        ids = []
         for detection_id,cur_det in enumerate(dets):
           boxes = cur_det[:4]
           (ymin, xmin, ymax, xmax) = (boxes[0] * im_height, boxes[1] * im_width,
                                         boxes[2] * im_height, boxes[3] * im_width)
           bbox = (xmin, xmax, ymin, ymax)
-          bbox_dict[detection_id] = bbox
-
           new_xmin,new_xmax,new_ymin,new_ymax = crop_ssd_prediction(xmin, xmax, ymin, ymax, CROP_SSD_PERCENTAGE, im_width, im_height)
-
           roi_cropped_rgb = image_np[new_ymin:new_ymax, new_xmin:new_xmax]
           faces_roi, _ = align_image_with_mtcnn_with_tf_graph(roi_cropped_rgb,pnet, rnet, onet, image_size=IMAGE_SIZE)
 
-          ### TODO: Need to consider this better. If SSD detected a "Face" but its not being recognized by the MTCNN
-          ### There is going to be a disrepancy because faces_roi here will ALWAYS output only one face or 0 .. But not its going to mismatch with the dets array which is from SSD
-          if len(faces_roi) != 0:
+          if len(faces_roi) != 0: # This is either a face or not a face
             faces_roi = faces_roi[0]
             faces_roi = faces_roi[:,:,::-1] #Convert from RGB to BGR to be compatible with cv2 image write
-            cv2.imwrite(os.path.join(TARGET_ROOT_TEMP_DIR,'faces_roi_'+str(detection_id)+'.jpg'),faces_roi)
+            cur_path = os.path.join(TARGET_ROOT_TEMP_DIR,'faces_roi_'+str(detection_id)+'.jpg')
+            paths.append(cur_path)
+            ids.append(detection_id)
+            cv2.imwrite(cur_path,faces_roi)
+            bbox_dict[detection_id] = bbox
 
-        nrof_images = len(dets)
+        nrof_images = len(bbox_dict)
         nrof_batches_per_epoch = int(math.ceil(1.0 * nrof_images / FACENET_PREDICTION_BATCH_SIZE))
         embedding_size = embeddings.get_shape()[1]
         emb_array = np.zeros((nrof_images, embedding_size))
-
-        paths = []
-        ids = []
-        for path in os.listdir(TARGET_ROOT_TEMP_DIR):
-          if path.endswith('.jpg'):
-            paths.append(os.path.join(TARGET_ROOT_TEMP_DIR,path))
-            ids.append(int(path.split('_')[-1].split('.')[0]))
 
         for i in range(nrof_batches_per_epoch):
           start_index = i * FACENET_PREDICTION_BATCH_SIZE
@@ -121,12 +110,9 @@ if __name__ == "__main__":
           print('Calculating image embedding cost: {}'.format(function_timer))
 
         shutil.rmtree(TARGET_ROOT_TEMP_DIR)
-        function_timer_start = time.time()
         ### Loading the SVM classifier ###
         with open(CLASSIFIER_PATH, 'rb') as infile:
           (model, class_names) = pickle.load(infile)
-        function_timer = time.time() - function_timer_start
-        print('Loading in SVM classifier cost: {}'.format(function_timer))
 
         if emb_array.shape[0] != 0:
             function_timer_start = time.time()
@@ -142,7 +128,7 @@ if __name__ == "__main__":
             print_recognition_output(best_class_indices, class_names, best_class_probabilities,
                                      recognition_threshold=0.7)
             draw_detection_box(image,ids,bbox_dict,class_names,best_class_indices,best_class_probabilities)
-            cv2.imshow('image_view', image)
+            cv2.imshow('video_view', image)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
           break

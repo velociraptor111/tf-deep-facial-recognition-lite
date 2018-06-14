@@ -70,9 +70,10 @@ if __name__ == "__main__":
         im_height = image.shape[0]
         im_width = image.shape[1]
 
-        bbox_dict = {}
-
         # For each of the detection boxes in dets, need to pass it to Facenet after using the facenet load data
+        paths = []
+        ids = []
+        bbox_dict = {}
         for detection_id,cur_det in enumerate(dets):
           boxes = cur_det[:4]
           (ymin, xmin, ymax, xmax) = (boxes[0] * im_height, boxes[1] * im_width,
@@ -84,23 +85,20 @@ if __name__ == "__main__":
 
           roi_cropped_rgb = image_np[new_ymin:new_ymax, new_xmin:new_xmax]
           faces_roi, _ = align_image_with_mtcnn_with_tf_graph(roi_cropped_rgb,pnet, rnet, onet, image_size=IMAGE_SIZE)
-          assert(len(faces_roi) == 1) # Take into account that SSD has already only detected one face!
-          faces_roi = faces_roi[0]
-          faces_roi = faces_roi[:,:,::-1] #Convert from RGB to BGR to be compatible with cv2 image write
-          cv2.imwrite(os.path.join(TARGET_ROOT_TEMP_DIR,'faces_roi_'+str(detection_id)+'.jpg'),faces_roi)
 
-        nrof_images = len(dets)
+          if len(faces_roi) != 0: # This is either a face or not a face
+            faces_roi = faces_roi[0]
+            faces_roi = faces_roi[:,:,::-1] #Convert from RGB to BGR to be compatible with cv2 image write
+            cur_path = os.path.join(TARGET_ROOT_TEMP_DIR,'faces_roi_'+str(detection_id)+'.jpg')
+            paths.append(cur_path)
+            ids.append(detection_id)
+            cv2.imwrite(cur_path,faces_roi)
+            bbox_dict[detection_id] = bbox
+
+        nrof_images = len(bbox_dict)
         nrof_batches_per_epoch = int(math.ceil(1.0 * nrof_images / FACENET_PREDICTION_BATCH_SIZE))
         embedding_size = embeddings.get_shape()[1]
         emb_array = np.zeros((nrof_images, embedding_size))
-
-        paths = []
-        ids = []
-        for path in os.listdir(TARGET_ROOT_TEMP_DIR):
-          if path.endswith('.jpg'):
-            paths.append(os.path.join(TARGET_ROOT_TEMP_DIR,path))
-            ids.append(int(path.split('_')[-1].split('.')[0]))
-
 
         for i in range(nrof_batches_per_epoch):
           start_index = i * FACENET_PREDICTION_BATCH_SIZE
@@ -122,13 +120,9 @@ if __name__ == "__main__":
           print('Calculating image embedding cost: {}'.format(function_timer))
 
         shutil.rmtree(TARGET_ROOT_TEMP_DIR)
-        function_timer_start = time.time()
-
         ### Loading the SVM classifier ###
         with open(CLASSIFIER_PATH, 'rb') as infile:
           (model, class_names) = pickle.load(infile)
-        function_timer = time.time() - function_timer_start
-        print('Loading in SVM classifier cost: {}'.format(function_timer))
 
         function_timer_start = time.time()
         predictions = model.predict_proba(emb_array)
