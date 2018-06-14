@@ -1,6 +1,8 @@
 __pycache__/
 *.pyc
-
+facenet/src/align/__pycache__/*.pyc
+.DS_Store
+facenet/.DS_Store
 # Ignore all the models neccesary for inference. Will create a download script from google drive
 model/
 facenet/models
