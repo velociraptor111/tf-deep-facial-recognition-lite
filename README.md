@@ -13,6 +13,9 @@ Object Detection and Recognition pipeline using Single Shot Multibox Detector (S
 
 ## Installation
 
+## Notes:
+- This repository is still under heavy development. 
+
 ## TODO:
 - Create a download script to download weights from google drive
 - Write comments on the different functions
