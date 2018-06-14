@@ -39,10 +39,7 @@ if __name__ == "__main__":
             pnet, rnet, onet = align.detect_face.create_mtcnn(sess, None)
 
             ### Creating and Loading the Facenet Graph ###
-            facenet.load_model(FACENET_MODEL_PATH)
-            images_placeholder = tf.get_default_graph().get_tensor_by_name("input:0")
-            embeddings = tf.get_default_graph().get_tensor_by_name("embeddings:0")
-            phase_train_placeholder = tf.get_default_graph().get_tensor_by_name("phase_train:0")
+            images_placeholder, embeddings, phase_train_placeholder = load_tf_facenet_graph(FACENET_MODEL_PATH)
 
             frame_num = 1490
             cap = cv2.VideoCapture(0)
@@ -51,7 +48,6 @@ if __name__ == "__main__":
                 initial_inference_start_time = time.time()
                 if not os.path.isdir(TARGET_ROOT_TEMP_DIR):
                     os.makedirs(TARGET_ROOT_TEMP_DIR)
-
                 ret, image = cap.read()
                 if ret == 0:
                     break
@@ -61,63 +57,65 @@ if __name__ == "__main__":
 
                 dets_faces, bboxes_faces = align_image_with_mtcnn_with_tf_graph(image_np, pnet, rnet, onet,
                                                                                 image_size=IMAGE_SIZE)
-                print(dets_faces.shape)
-                paths = []
-                for face_id, det in enumerate(dets_faces):
-                    print(det.shape)
-                    faces_roi = det[:, :, ::-1]  # Convert from RGB to BGR to be compatible with cv2 image write
-                    im_path = os.path.join(TARGET_ROOT_TEMP_DIR, 'faces_testing_resized_' + str(face_id) + '.jpg')
-                    cv2.imwrite(im_path, faces_roi)
-                    paths.append(im_path)
+                ### Check if there are any faces detected in the first place ###
+                if len(dets_faces) != 0:
+                    print(dets_faces.shape)
+                    paths = []
+                    for face_id, det in enumerate(dets_faces):
+                        print(det.shape)
+                        faces_roi = det[:, :, ::-1]  # Convert from RGB to BGR to be compatible with cv2 image write
+                        im_path = os.path.join(TARGET_ROOT_TEMP_DIR, 'faces_testing_resized_' + str(face_id) + '.jpg')
+                        cv2.imwrite(im_path, faces_roi)
+                        paths.append(im_path)
 
-                nrof_images = len(paths)
-                nrof_batches_per_epoch = int(math.ceil(1.0 * nrof_images / FACENET_PREDICTION_BATCH_SIZE))
-                embedding_size = embeddings.get_shape()[1]
-                emb_array = np.zeros((nrof_images, embedding_size))
+                    nrof_images = len(paths)
+                    nrof_batches_per_epoch = int(math.ceil(1.0 * nrof_images / FACENET_PREDICTION_BATCH_SIZE))
+                    embedding_size = embeddings.get_shape()[1]
+                    emb_array = np.zeros((nrof_images, embedding_size))
 
-                for i in range(nrof_batches_per_epoch):
-                    start_index = i * FACENET_PREDICTION_BATCH_SIZE
-                    end_index = min((i + 1) * FACENET_PREDICTION_BATCH_SIZE, nrof_images)
-                    paths_batch = paths[start_index:end_index]  # Pass in several different paths
-                    images = facenet.load_data(paths_batch, False, False, IMAGE_SIZE)
-                    feed_dict = {images_placeholder: images, phase_train_placeholder: False}
+                    for i in range(nrof_batches_per_epoch):
+                        start_index = i * FACENET_PREDICTION_BATCH_SIZE
+                        end_index = min((i + 1) * FACENET_PREDICTION_BATCH_SIZE, nrof_images)
+                        paths_batch = paths[start_index:end_index]  # Pass in several different paths
+                        images = facenet.load_data(paths_batch, False, False, IMAGE_SIZE)
+                        feed_dict = {images_placeholder: images, phase_train_placeholder: False}
+                        function_timer_start = time.time()
+                        emb_array[start_index:end_index, :] = sess.run(embeddings, feed_dict=feed_dict)
+                        function_timer = time.time() - function_timer_start
+                        print('Calculating image embedding cost: {}'.format(function_timer))
+
+                    shutil.rmtree(TARGET_ROOT_TEMP_DIR)
                     function_timer_start = time.time()
-                    emb_array[start_index:end_index, :] = sess.run(embeddings, feed_dict=feed_dict)
+                    ### Loading the SVM classifier ###
+                    with open(CLASSIFIER_PATH, 'rb') as infile:
+                        (model, class_names) = pickle.load(infile)
                     function_timer = time.time() - function_timer_start
-                    print('Calculating image embedding cost: {}'.format(function_timer))
+                    print('Loading in SVM classifier cost: {}'.format(function_timer))
 
-                shutil.rmtree(TARGET_ROOT_TEMP_DIR)
-                function_timer_start = time.time()
-                ### Loading the SVM classifier ###
-                with open(CLASSIFIER_PATH, 'rb') as infile:
-                    (model, class_names) = pickle.load(infile)
-                function_timer = time.time() - function_timer_start
-                print('Loading in SVM classifier cost: {}'.format(function_timer))
+                    function_timer_start = time.time()
+                    predictions = model.predict_proba(emb_array)
+                    function_timer = time.time() - function_timer_start
+                    print('Predicting using SVM cost: {}'.format(function_timer))
 
-                function_timer_start = time.time()
-                predictions = model.predict_proba(emb_array)
-                function_timer = time.time() - function_timer_start
-                print('Predicting using SVM cost: {}'.format(function_timer))
+                    best_class_indices = np.argmax(predictions, axis=1)
+                    best_class_probabilities = predictions[np.arange(len(best_class_indices)), best_class_indices]
 
-                best_class_indices = np.argmax(predictions, axis=1)
-                best_class_probabilities = predictions[np.arange(len(best_class_indices)), best_class_indices]
+                    elapsed_inference_time = time.time() - initial_inference_start_time
+                    print('Total inference time cost: {}'.format(elapsed_inference_time))
 
-                elapsed_inference_time = time.time() - initial_inference_start_time
-                print('Total inference time cost: {}'.format(elapsed_inference_time))
+                    for i, bbox_face in enumerate(bboxes_faces):
+                        cv2.rectangle(image, (bbox_face[0], bbox_face[1]), (bbox_face[2], bbox_face[3]), (0, 0, 255), 3)
 
-                for i, bbox_face in enumerate(bboxes_faces):
-                    cv2.rectangle(image, (bbox_face[0], bbox_face[1]), (bbox_face[2], bbox_face[3]), (0, 0, 255), 3)
+                        if best_class_probabilities[i] > 0.7:
+                            cv2.putText(image, class_names[best_class_indices[i]], (int(bbox_face[0]), int(bbox_face[1]) + 10),
+                                        0, 0.6, (0, 255, 0))
+                        else:
+                            cv2.putText(image, 'Unknown Face', (int(bbox_face[0]), int(bbox_face[1]) + 10), 0, 0.6, (0, 255, 0))
 
-                    if best_class_probabilities[i] > 0.7:
-                        cv2.putText(image, class_names[best_class_indices[i]], (int(bbox_face[0]), int(bbox_face[1]) + 10),
-                                    0, 0.6, (0, 255, 0))
-                    else:
-                        cv2.putText(image, 'Unknown Face', (int(bbox_face[0]), int(bbox_face[1]) + 10), 0, 0.6, (0, 255, 0))
+                    cv2.imshow('image_view', image)
 
-                cv2.imshow('image_view', image)
-
-                for i in range(len(best_class_indices)):
-                    print('%4d  %s: %.3f' % (i, class_names[best_class_indices[i]], best_class_probabilities[i]))
+                    print_recognition_output(best_class_indices, class_names, best_class_probabilities,
+                                             recognition_threshold=0.7)
 
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break

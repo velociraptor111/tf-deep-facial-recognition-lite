@@ -42,10 +42,7 @@ if __name__ == "__main__":
             pnet, rnet, onet = align.detect_face.create_mtcnn(sess, None)
 
             ### Creating and Loading the Facenet Graph ###
-            facenet.load_model(FACENET_MODEL_PATH)
-            images_placeholder = tf.get_default_graph().get_tensor_by_name("input:0")
-            embeddings = tf.get_default_graph().get_tensor_by_name("embeddings:0")
-            phase_train_placeholder = tf.get_default_graph().get_tensor_by_name("phase_train:0")
+            images_placeholder, embeddings, phase_train_placeholder = load_tf_facenet_graph(FACENET_MODEL_PATH)
 
             for image_id, SOURCE_IM_PATH in enumerate(SOURCE_IM_PATH_ARRAY):
                 initial_inference_start_time = time.time()
@@ -114,8 +111,8 @@ if __name__ == "__main__":
 
                 cv2.imwrite(os.path.join(FINAL_DETECTION_PATH, 'final_detection_no_ssd_' + str(image_id) + '.jpg'), image)
 
-                for i in range(len(best_class_indices)):
-                    print('%4d  %s: %.3f' % (i, class_names[best_class_indices[i]], best_class_probabilities[i]))
+                print_recognition_output(best_class_indices, class_names, best_class_probabilities,
+                                         recognition_threshold=0.7)
 
 
 

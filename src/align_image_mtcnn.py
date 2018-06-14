@@ -86,6 +86,11 @@ def align_image_with_mtcnn_with_tf_graph(img,pnet, rnet,onet,image_size=182,marg
             scaled_array.append(scaled)
             bounding_boxes_array.append(bb)
 
+        return np.array(scaled_array), np.array(bounding_boxes_array)
+    else:
+        print("No Faces detected")
+        return np.array([]),np.array([])
+
     # return scaled
-    return np.array(scaled_array),np.array(bounding_boxes_array)
+
 

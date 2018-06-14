@@ -1,4 +1,5 @@
 __pycache__/
+*.pyc
 
 # Ignore all the models neccesary for inference. Will create a download script from google drive
 model/

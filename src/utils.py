@@ -65,42 +65,32 @@ def post_process_ssd_predictions(boxes,scores,classes):
   return dets
 
 def load_tf_ssd_detection_graph(PATH_TO_CKPT):
-  detection_graph = tf.Graph()
-  with detection_graph.as_default():
-    od_graph_def = tf.GraphDef()
-    with tf.gfile.GFile(PATH_TO_CKPT, 'rb') as fid:
-      serialized_graph = fid.read()
-      od_graph_def.ParseFromString(serialized_graph)
-      tf.import_graph_def(od_graph_def, name='')
+  od_graph_def = tf.GraphDef()
+  with tf.gfile.GFile(PATH_TO_CKPT, 'rb') as fid:
+    serialized_graph = fid.read()
+    od_graph_def.ParseFromString(serialized_graph)
+    tf.import_graph_def(od_graph_def, name='')
 
-  with detection_graph.as_default():
-    config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True
-    with tf.Session(graph=detection_graph, config=config) as sess:
-      image_tensor = detection_graph.get_tensor_by_name('image_tensor:0')
-      boxes_tensor = detection_graph.get_tensor_by_name('detection_boxes:0')
-      scores_tensor = detection_graph.get_tensor_by_name('detection_scores:0')
-      classes_tensor = detection_graph.get_tensor_by_name('detection_classes:0')
-      num_detections_tensor = detection_graph.get_tensor_by_name('num_detections:0')
+  image_tensor = tf.get_default_graph().get_tensor_by_name('image_tensor:0')
+  boxes_tensor = tf.get_default_graph().get_tensor_by_name('detection_boxes:0')
+  scores_tensor = tf.get_default_graph().get_tensor_by_name('detection_scores:0')
+  classes_tensor = tf.get_default_graph().get_tensor_by_name('detection_classes:0')
+  num_detections_tensor = tf.get_default_graph().get_tensor_by_name('num_detections:0')
 
-  return detection_graph,image_tensor,boxes_tensor,scores_tensor,classes_tensor,num_detections_tensor
+  return image_tensor,boxes_tensor,scores_tensor,classes_tensor,num_detections_tensor
 
 def load_tf_facenet_graph(FACENET_MODEL_PATH):
-  facenet_graph = tf.Graph()
-  with facenet_graph.as_default():
-    with tf.Session(graph=facenet_graph) as sess:
-      facenet.load_model(FACENET_MODEL_PATH)
-      images_placeholder = facenet_graph.get_tensor_by_name("input:0")
-      embeddings = facenet_graph.get_tensor_by_name("embeddings:0")
-      phase_train_placeholder = facenet_graph.get_tensor_by_name("phase_train:0")
-  return facenet_graph,images_placeholder,embeddings,phase_train_placeholder
 
-def load_tf_mtcnn_graph():
-  MTCNN_graph = tf.Graph()
-  with MTCNN_graph.as_default():
-    gpu_memory_fraction = 1.0
-    gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=gpu_memory_fraction)
-    sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, log_device_placement=False))
-    with sess.as_default():
-      pnet, rnet, onet = align.detect_face.create_mtcnn(sess, None)
-  return MTCNN_graph,pnet,rnet, onet
+  facenet.load_model(FACENET_MODEL_PATH)
+  images_placeholder = tf.get_default_graph().get_tensor_by_name("input:0")
+  embeddings = tf.get_default_graph().get_tensor_by_name("embeddings:0")
+  phase_train_placeholder = tf.get_default_graph().get_tensor_by_name("phase_train:0")
+
+  return images_placeholder,embeddings,phase_train_placeholder
+
+def print_recognition_output(best_class_indices, class_names, best_class_probabilities,recognition_threshold=0.7):
+  for i in range(len(best_class_indices)):
+    if best_class_probabilities[i] > recognition_threshold:
+      print('%4d  %s: %.3f' % (i, class_names[best_class_indices[i]], best_class_probabilities[i]))
+    else:
+      print('%4d  %s: %.3f' % (i, 'Unknown Face', best_class_probabilities[i]))
