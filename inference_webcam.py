@@ -43,7 +43,6 @@ from src.utils import *
 
 # Path to frozen detection graph. This is the actual model that is used for the object detection.
 PATH_TO_CKPT = './model/frozen_inference_graph_custom.pb'
-TARGET_ROOT_TEMP_DIR = './temp_roi'
 FINAL_DETECTION_PATH = './final_detection'
 FACENET_MODEL_PATH = './facenet/models/facenet/20180402-114759/20180402-114759.pb'
 CLASSIFIER_PATH = './facenet/models/selfies_classifier_v2.pkl'
@@ -78,9 +77,6 @@ if __name__ == "__main__":
         if ret == 0:
             break
         initial_inference_start_time = time.time()
-        if not os.path.isdir(TARGET_ROOT_TEMP_DIR):
-          os.makedirs(TARGET_ROOT_TEMP_DIR)
-
         image_np = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) # Convert image from BGR to RGB to pass on SSD detector
         image_np_expanded = np.expand_dims(image_np, axis=0)
 
@@ -96,8 +92,9 @@ if __name__ == "__main__":
         im_width = image.shape[1]
 
         bbox_dict = {}
-        paths = []
         ids = []
+        images_array = []
+
         for detection_id,cur_det in enumerate(dets):
           boxes = cur_det[:4]
           (ymin, xmin, ymax, xmax) = (boxes[0] * im_height, boxes[1] * im_width,
@@ -109,30 +106,17 @@ if __name__ == "__main__":
 
           if len(faces_roi) != 0: # This is either a face or not a face
             faces_roi = faces_roi[0]
-            faces_roi = faces_roi[:,:,::-1] #Convert from RGB to BGR to be compatible with cv2 image write
-            cur_path = os.path.join(TARGET_ROOT_TEMP_DIR,'faces_roi_'+str(detection_id)+'.jpg')
-            paths.append(cur_path)
+            images_array.append(prewhiten(faces_roi))
             ids.append(detection_id)
-            cv2.imwrite(cur_path,faces_roi)
             bbox_dict[detection_id] = bbox
 
         nrof_images = len(bbox_dict)
         nrof_batches_per_epoch = int(math.ceil(1.0 * nrof_images / FACENET_PREDICTION_BATCH_SIZE))
-        embedding_size = embeddings.get_shape()[1]
-        emb_array = np.zeros((nrof_images, embedding_size))
 
-        for i in range(nrof_batches_per_epoch):
-          start_index = i * FACENET_PREDICTION_BATCH_SIZE
-          end_index = min((i + 1) * FACENET_PREDICTION_BATCH_SIZE, nrof_images)
-          paths_batch = paths[start_index:end_index] # Pass in several different paths
-          images = facenet.load_data(paths_batch, False, False, IMAGE_SIZE)
-          feed_dict = {images_placeholder: images, phase_train_placeholder: False}
-          function_timer_start = time.time()
-          emb_array[start_index:end_index, :] = sess.run(embeddings, feed_dict=feed_dict)
-          function_timer = time.time() - function_timer_start
-          print('Calculating image embedding cost: {}'.format(function_timer))
+        emb_array = get_face_embeddings(sess, embeddings, images_placeholder, phase_train_placeholder,
+                                        nrof_images, nrof_batches_per_epoch, FACENET_PREDICTION_BATCH_SIZE,
+                                        images_array)
 
-        shutil.rmtree(TARGET_ROOT_TEMP_DIR)
         ### Loading the SVM classifier ###
         with open(CLASSIFIER_PATH, 'rb') as infile:
           (model, class_names) = pickle.load(infile)

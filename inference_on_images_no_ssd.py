@@ -45,7 +45,6 @@ PATH_TO_CKPT = './model/frozen_inference_graph_custom.pb'
 SOURCE_IM_PATH_ARRAY = ['./images/image_2.jpg', './images/image_3.jpg', './images/image_2.jpg', './images/image_3.jpg',
                         './images/image_2.jpg', './images/image_3.jpg', './images/image_2.jpg', './images/image_3.jpg',
                         './images/image_2.jpg', './images/image_3.jpg']
-TARGET_ROOT_TEMP_DIR = './temp_roi_no_ssd'
 FINAL_DETECTION_PATH = './final_detection'
 FACENET_MODEL_PATH = './facenet/models/facenet/20180402-114759/20180402-114759.pb'
 CLASSIFIER_PATH = './facenet/models/selfies_classifier_v2.pkl'
@@ -68,9 +67,6 @@ if __name__ == "__main__":
 
             for image_id, SOURCE_IM_PATH in enumerate(SOURCE_IM_PATH_ARRAY):
                 initial_inference_start_time = time.time()
-                if not os.path.isdir(TARGET_ROOT_TEMP_DIR):
-                    os.makedirs(TARGET_ROOT_TEMP_DIR)
-
                 image = cv2.imread(SOURCE_IM_PATH)
                 # image = cv2.resize(image, (250, 250), interpolation=cv2.INTER_AREA) #Apparently when not resized its better ?
                 image_np = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -78,32 +74,17 @@ if __name__ == "__main__":
 
                 dets_faces, bboxes_faces = align_image_with_mtcnn_with_tf_graph(image_np, pnet, rnet, onet,
                                                                                 image_size=IMAGE_SIZE)
-                print(dets_faces.shape)
-                paths = []
+                images_array = []
                 for face_id, det in enumerate(dets_faces):
-                    print(det.shape)
-                    faces_roi = det[:, :, ::-1]  # Convert from RGB to BGR to be compatible with cv2 image write
-                    im_path = os.path.join(TARGET_ROOT_TEMP_DIR, 'faces_testing_resized_' + str(face_id) + '.jpg')
-                    cv2.imwrite(im_path, faces_roi)
-                    paths.append(im_path)
+                    images_array.append(prewhiten(det))
 
-                nrof_images = len(paths)
+                nrof_images = len(images_array)
                 nrof_batches_per_epoch = int(math.ceil(1.0 * nrof_images / FACENET_PREDICTION_BATCH_SIZE))
-                embedding_size = embeddings.get_shape()[1]
-                emb_array = np.zeros((nrof_images, embedding_size))
 
-                for i in range(nrof_batches_per_epoch):
-                    start_index = i * FACENET_PREDICTION_BATCH_SIZE
-                    end_index = min((i + 1) * FACENET_PREDICTION_BATCH_SIZE, nrof_images)
-                    paths_batch = paths[start_index:end_index]  # Pass in several different paths
-                    images = facenet.load_data(paths_batch, False, False, IMAGE_SIZE)
-                    feed_dict = {images_placeholder: images, phase_train_placeholder: False}
-                    function_timer_start = time.time()
-                    emb_array[start_index:end_index, :] = sess.run(embeddings, feed_dict=feed_dict)
-                    function_timer = time.time() - function_timer_start
-                    print('Calculating image embedding cost: {}'.format(function_timer))
+                emb_array = get_face_embeddings(sess, embeddings, images_placeholder, phase_train_placeholder,
+                                                nrof_images, nrof_batches_per_epoch, FACENET_PREDICTION_BATCH_SIZE,
+                                                images_array)
 
-                shutil.rmtree(TARGET_ROOT_TEMP_DIR)
                 ### Loading the SVM classifier ###
                 with open(CLASSIFIER_PATH, 'rb') as infile:
                     (model, class_names) = pickle.load(infile)

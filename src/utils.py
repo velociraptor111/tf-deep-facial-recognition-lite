@@ -21,6 +21,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+import time
 
 import tensorflow as tf
 import cv2
@@ -158,3 +159,31 @@ def print_recognition_output(best_class_indices, class_names, best_class_probabi
       print('%4d  %s: %.3f' % (i, class_names[best_class_indices[i]], best_class_probabilities[i]))
     else:
       print('%4d  %s: %.3f' % (i, 'Unknown Face', best_class_probabilities[i]))
+
+def prewhiten(x):
+  """
+
+  :param x: The numpy array representing an image
+  :return: A whitened image
+  """
+  mean = np.mean(x)
+  std = np.std(x)
+  std_adj = np.maximum(std, 1.0/np.sqrt(x.size))
+  y = np.multiply(np.subtract(x, mean), 1/std_adj)
+  return y
+
+def get_face_embeddings(sess,embeddings,images_placeholder,phase_train_placeholder,nrof_images,nrof_batches_per_epoch,FACENET_PREDICTION_BATCH_SIZE,images_array):
+  embedding_size = embeddings.get_shape()[1]
+  emb_array = np.zeros((nrof_images, embedding_size))
+  for i in range(nrof_batches_per_epoch):
+    start_index = i * FACENET_PREDICTION_BATCH_SIZE
+    end_index = min((i + 1) * FACENET_PREDICTION_BATCH_SIZE, nrof_images)
+    images_batch = images_array[start_index:end_index]  # Pass in several different paths
+    images_batch = np.array(images_batch)
+    feed_dict = {images_placeholder: images_batch, phase_train_placeholder: False}
+    function_timer_start = time.time()
+    emb_array[start_index:end_index, :] = sess.run(embeddings, feed_dict=feed_dict)
+    function_timer = time.time() - function_timer_start
+    print('Calculating image embedding cost: {}'.format(function_timer))
+
+    return emb_array
