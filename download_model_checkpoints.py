@@ -41,11 +41,11 @@ if __name__ == "__main__":
     facenet_model_path = os.path.join(os.getcwd(),'facenet','models')
     temp_zip_directory = os.path.join(os.getcwd(),'tmp_zip_folder')
     src_ssd_path = os.path.join(temp_zip_directory,'tf-deep-facial-recognition-lite-models','ssd_model')
+    zip_file_destination = os.path.join(os.getcwd(), 'tf-deep-facial-recognition-lite-models.zip')
 
     print("Downloading .....")
     file_id = '1_YC_UNM6X95x8npDU2_plh-MI5gkb02x'
-    destination = os.path.join(os.getcwd(),'tf-deep-facial-recognition-lite-models.zip')
-    download_file_from_google_drive(file_id, destination)
+    download_file_from_google_drive(file_id, zip_file_destination)
     print("Zip file has been downloaded! ")
     print("Unzipping the files ....")
     if not os.path.exists(temp_zip_directory):
@@ -63,6 +63,7 @@ if __name__ == "__main__":
 
     shutil.copytree(os.path.join(temp_zip_directory,'tf-deep-facial-recognition-lite-models','facenet_models'),facenet_model_path)
     shutil.rmtree(temp_zip_directory)
+    os.remove(zip_file_destination)
 
 
 

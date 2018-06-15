@@ -18,8 +18,6 @@ Object Detection and Recognition pipeline using Single Shot Multibox Detector (S
 - This repository is still under heavy development.
 
 ## TODO:
-- Create a download script to download weights from google drive
-- Write comments on the different functions
 - Configure webcam script to work with GPU (Zain)
 - Change the loading of Facenet to grab images directly from numpy array as oppose to saving it on a temp disk (Zain)
 
