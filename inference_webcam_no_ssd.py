@@ -90,11 +90,7 @@ if __name__ == "__main__":
                     ### Loading the SVM classifier ###
                     with open(CLASSIFIER_PATH, 'rb') as infile:
                         (model, class_names) = pickle.load(infile)
-                    function_timer_start = time.time()
                     predictions = model.predict_proba(emb_array)
-                    function_timer = time.time() - function_timer_start
-                    print('Predicting using SVM cost: {}'.format(function_timer))
-
                     best_class_indices = np.argmax(predictions, axis=1)
                     best_class_probabilities = predictions[np.arange(len(best_class_indices)), best_class_indices]
 

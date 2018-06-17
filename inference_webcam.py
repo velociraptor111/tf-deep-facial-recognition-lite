@@ -112,7 +112,6 @@ if __name__ == "__main__":
 
         nrof_images = len(bbox_dict)
         nrof_batches_per_epoch = int(math.ceil(1.0 * nrof_images / FACENET_PREDICTION_BATCH_SIZE))
-
         emb_array = get_face_embeddings(sess, embeddings, images_placeholder, phase_train_placeholder,
                                         nrof_images, nrof_batches_per_epoch, FACENET_PREDICTION_BATCH_SIZE,
                                         images_array)
@@ -120,12 +119,8 @@ if __name__ == "__main__":
         ### Loading the SVM classifier ###
         with open(CLASSIFIER_PATH, 'rb') as infile:
           (model, class_names) = pickle.load(infile)
-
         if emb_array.shape[0] != 0:
-            function_timer_start = time.time()
             predictions = model.predict_proba(emb_array)
-            function_timer = time.time() - function_timer_start
-            print('Predicting using SVM cost: {}'.format(function_timer))
             best_class_indices = np.argmax(predictions, axis=1)
             best_class_probabilities = predictions[np.arange(len(best_class_indices)), best_class_indices]
 

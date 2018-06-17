@@ -42,9 +42,7 @@ from src.utils import *
 
 # Path to frozen detection graph. This is the actual model that is used for the object detection.
 PATH_TO_CKPT = './model/frozen_inference_graph_custom.pb'
-SOURCE_IM_PATH_ARRAY = ['./images/image_2.jpg', './images/image_3.jpg', './images/image_2.jpg', './images/image_3.jpg',
-                        './images/image_2.jpg', './images/image_3.jpg', './images/image_2.jpg', './images/image_3.jpg',
-                        './images/image_2.jpg', './images/image_3.jpg']
+SOURCE_IM_PATH_ARRAY = ['./images/image_2.jpg', './images/image_3.jpg']
 FINAL_DETECTION_PATH = './final_detection'
 FACENET_MODEL_PATH = './facenet/models/facenet/20180402-114759/20180402-114759.pb'
 CLASSIFIER_PATH = './facenet/models/selfies_classifier_v2.pkl'
@@ -88,12 +86,7 @@ if __name__ == "__main__":
                 ### Loading the SVM classifier ###
                 with open(CLASSIFIER_PATH, 'rb') as infile:
                     (model, class_names) = pickle.load(infile)
-
-                function_timer_start = time.time()
                 predictions = model.predict_proba(emb_array)
-                function_timer = time.time() - function_timer_start
-                print('Predicting using SVM cost: {}'.format(function_timer))
-
                 best_class_indices = np.argmax(predictions, axis=1)
                 best_class_probabilities = predictions[np.arange(len(best_class_indices)), best_class_indices]
 
