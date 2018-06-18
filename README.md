@@ -19,4 +19,4 @@ Object Detection and Recognition pipeline using Single Shot Multibox Detector (S
 
 ## TODO:
 - Configure webcam script to work with GPU (Zain)
-
+- Write a python script to automatically train a face classifier using a webcam
