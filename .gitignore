@@ -6,6 +6,7 @@ model/
 facenet/models
 .idea
 final_detection/
+images/
 
 # Ignore any potentials temporary folders
 temp_roi/

@@ -40,17 +40,19 @@ from src.align_image_mtcnn import align_image_with_mtcnn_with_tf_graph
 import facenet
 import align.detect_face
 from src.utils import *
+import configparser
+config = configparser.ConfigParser()
+config.read('config.ini')
 
 # Path to frozen detection graph. This is the actual model that is used for the object detection.
-PATH_TO_CKPT = './model/frozen_inference_graph_custom.pb'
-FINAL_DETECTION_PATH = './final_detection'
-FACENET_MODEL_PATH = './facenet/models/facenet/20180402-114759/20180402-114759.pb'
-CLASSIFIER_PATH = './facenet/models/selfies_classifier_v2.pkl'
+PATH_TO_CKPT = config.get("DEFAULT","PATH_TO_SSD_CKPT")
+FINAL_DETECTION_PATH = config.get("DEFAULT","PATH_TO_FINAL_DETECTION_DIRECTORY")
+FACENET_MODEL_PATH = config.get("DEFAULT","PATH_TO_FACENET_MODEL")
+CLASSIFIER_PATH = config.get("DEFAULT","PATH_TO_SVM_EMBEDDINGS_CLASSIFIER")
 
-NUM_CLASSES = 2
-CROP_SSD_PERCENTAGE = 0.3
-IMAGE_SIZE = 160
-FACENET_PREDICTION_BATCH_SIZE = 90
+CROP_SSD_PERCENTAGE = float(config.get("DEFAULT","CROP_SSD_PERCENTAGE"))
+IMAGE_SIZE = int(config.get("DEFAULT","IMAGE_SIZE"))
+FACENET_PREDICTION_BATCH_SIZE = int(config.get("DEFAULT","FACENET_PREDICTION_BATCH_SIZE"))
 
 if __name__ == "__main__":
     with tf.Graph().as_default():

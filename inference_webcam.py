@@ -40,18 +40,20 @@ from src.align_image_mtcnn import align_image_with_mtcnn_with_tf_graph
 import facenet
 
 from src.utils import *
+import configparser
+config = configparser.ConfigParser()
+config.read('config.ini')
 
 # Path to frozen detection graph. This is the actual model that is used for the object detection.
-PATH_TO_CKPT = './model/frozen_inference_graph_custom.pb'
-FINAL_DETECTION_PATH = './final_detection'
-FACENET_MODEL_PATH = './facenet/models/facenet/20180402-114759/20180402-114759.pb'
-CLASSIFIER_PATH = './facenet/models/selfies_classifier_v2.pkl'
+PATH_TO_CKPT = config.get("DEFAULT","PATH_TO_SSD_CKPT")
+FINAL_DETECTION_PATH = config.get("DEFAULT","PATH_TO_FINAL_DETECTION_DIRECTORY")
+FACENET_MODEL_PATH = config.get("DEFAULT","PATH_TO_FACENET_MODEL")
+CLASSIFIER_PATH = config.get("DEFAULT","PATH_TO_SVM_EMBEDDINGS_CLASSIFIER")
 
-NUM_CLASSES = 2
-CROP_SSD_PERCENTAGE = 0.3
-IMAGE_SIZE = 160
-FACENET_PREDICTION_BATCH_SIZE = 90
-MAX_FRAME_COUNT = 1490
+CROP_SSD_PERCENTAGE = float(config.get("DEFAULT","CROP_SSD_PERCENTAGE"))
+IMAGE_SIZE = int(config.get("DEFAULT","IMAGE_SIZE"))
+FACENET_PREDICTION_BATCH_SIZE = int(config.get("DEFAULT","FACENET_PREDICTION_BATCH_SIZE"))
+MAX_FRAME_COUNT = int(config.get("DEFAULT","MAX_FRAME_COUNT"))
 
 if __name__ == "__main__":
 
@@ -128,8 +130,8 @@ if __name__ == "__main__":
             print('Total inference time cost: {}'.format(elapsed_inference_time))
 
             print_recognition_output(best_class_indices, class_names, best_class_probabilities,
-                                     recognition_threshold=0.7)
-            draw_detection_box(image,ids,bbox_dict,class_names,best_class_indices,best_class_probabilities)
+                                     recognition_threshold=0.5)
+            draw_detection_box(image,ids,bbox_dict,class_names,best_class_indices,best_class_probabilities,threshold=0.5)
             cv2.imshow('video_view', image)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):

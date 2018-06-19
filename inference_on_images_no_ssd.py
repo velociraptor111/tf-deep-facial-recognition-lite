@@ -40,17 +40,22 @@ import facenet
 import align.detect_face
 from src.utils import *
 
-# Path to frozen detection graph. This is the actual model that is used for the object detection.
-PATH_TO_CKPT = './model/frozen_inference_graph_custom.pb'
-SOURCE_IM_PATH_ARRAY = ['./images/image_2.jpg', './images/image_3.jpg']
-FINAL_DETECTION_PATH = './final_detection'
-FACENET_MODEL_PATH = './facenet/models/facenet/20180402-114759/20180402-114759.pb'
-CLASSIFIER_PATH = './facenet/models/selfies_classifier_v2.pkl'
+import configparser
+config = configparser.ConfigParser()
+config.read('config.ini')
 
-NUM_CLASSES = 2
-CROP_SSD_PERCENTAGE = 0.3
-IMAGE_SIZE = 160
-FACENET_PREDICTION_BATCH_SIZE = 90
+# Path to frozen detection graph. This is the actual model that is used for the object detection.
+PATH_TO_CKPT = config.get("DEFAULT","PATH_TO_SSD_CKPT")
+SOURCE_IM_PATH_DIR = os.path.join(os.getcwd(),config.get("DEFAULT","SOURCE_IM_PATH_DIRECTORY"))
+SOURCE_IM_PATH_ARRAY = [os.path.join(SOURCE_IM_PATH_DIR,path) for
+                                path in config.get("DEFAULT","SOURCE_IM_NAMES").split(',')]
+FINAL_DETECTION_PATH = config.get("DEFAULT","PATH_TO_FINAL_DETECTION_DIRECTORY")
+FACENET_MODEL_PATH = config.get("DEFAULT","PATH_TO_FACENET_MODEL")
+CLASSIFIER_PATH = config.get("DEFAULT","PATH_TO_SVM_EMBEDDINGS_CLASSIFIER")
+
+CROP_SSD_PERCENTAGE = float(config.get("DEFAULT","CROP_SSD_PERCENTAGE"))
+IMAGE_SIZE = int(config.get("DEFAULT","IMAGE_SIZE"))
+FACENET_PREDICTION_BATCH_SIZE = int(config.get("DEFAULT","FACENET_PREDICTION_BATCH_SIZE"))
 
 if __name__ == "__main__":
     with tf.Graph().as_default():

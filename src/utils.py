@@ -43,7 +43,7 @@ def filter_ssd_predictions(dets,threshold=0.7):
   conf_scores = dets[:,4] # Get all the prediction conf scores
   ids = np.where(conf_scores > threshold)
   return dets[ids]
-def draw_detection_box(image,ids,bbox_dict,class_names,best_class_indices,best_class_probabilities):
+def draw_detection_box(image,ids,bbox_dict,class_names,best_class_indices,best_class_probabilities,threshold=0.7):
   '''
   Draws bounding box on an image using cv2 built in functions.
   :param image: numpy array describing an image that will draw the detection results on
@@ -58,10 +58,10 @@ def draw_detection_box(image,ids,bbox_dict,class_names,best_class_indices,best_c
   for i,id in enumerate(ids):
     bbox = bbox_dict[id]
     cv2.rectangle(image, (int(bbox[0]), int(bbox[2])), (int(bbox[1]), int(bbox[3])), (255, 0, 0), 2)
-    if best_class_probabilities[i] > 0.7:
-      cv2.putText(image, class_names[best_class_indices[i]] , (int(bbox[0]), int(bbox[2]) + 10), 0, 0.6, (0, 255, 0))
+    if best_class_probabilities[i] > threshold:
+      cv2.putText(image, class_names[best_class_indices[i]] , (int(bbox[0]), int(bbox[2]) + 10), 0, 0.8, (0, 255, 0),thickness=2)
     else:
-      cv2.putText(image, 'Unknown Face', (int(bbox[0]), int(bbox[2]) + 10), 0, 0.6, (0, 255, 0))
+      cv2.putText(image, 'Unknown Face', (int(bbox[0]), int(bbox[2]) + 10), 0, 0.8, (0, 0, 255),thickness=2)
 
 def crop_ssd_prediction(xmin,xmax,ymin,ymax,CROP_SSD_PERCENTAGE,im_width,im_height):
   '''
