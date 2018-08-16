@@ -7,6 +7,7 @@ facenet/models
 .idea
 final_detection/
 images/
+.DS_Store
 
 # Ignore any potentials temporary folders
 temp_roi/

@@ -134,8 +134,8 @@ if __name__ == "__main__":
         elapsed_inference_time = time.time() - initial_inference_start_time
         print('Total inference time cost: {}'.format(elapsed_inference_time))
 
-        print_recognition_output(best_class_indices,class_names,best_class_probabilities,recognition_threshold=0.1)
-        draw_detection_box(image,ids,bbox_dict,class_names,best_class_indices,best_class_probabilities,threshold = 0.4)
+        print_recognition_output(best_class_indices,class_names,best_class_probabilities,recognition_threshold=0.8)
+        draw_detection_box(image,ids,bbox_dict,class_names,best_class_indices,best_class_probabilities,threshold = 0.8)
 
         print("Saving the final detection images to ",
                                       os.path.join(FINAL_DETECTION_PATH,'final_detection_'+str(image_id)+'.jpg'))
