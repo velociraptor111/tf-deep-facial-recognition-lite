@@ -21,3 +21,4 @@ Object Detection and Recognition pipeline using Single Shot Multibox Detector (S
 - Comment utils.py
 - Update the download server to download newer SSD Mobilenet Checkpoint
 - Write a python script to automatically train a face classifier using a webcam
+- Finish writing the installation script
