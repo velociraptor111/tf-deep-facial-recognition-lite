@@ -18,5 +18,6 @@ Object Detection and Recognition pipeline using Single Shot Multibox Detector (S
 - This repository is still under heavy development.
 
 ## TODO:
-- Configure webcam script to work with GPU (Zain)
+- Comment utils.py
+- Update the download server to download newer SSD Mobilenet Checkpoint
 - Write a python script to automatically train a face classifier using a webcam
