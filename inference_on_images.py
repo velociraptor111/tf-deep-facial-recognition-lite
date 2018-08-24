@@ -35,11 +35,12 @@ import json
 import numpy as np
 import tensorflow as tf
 import cv2
-import _init_paths
-from src.align_image_mtcnn import align_image_with_mtcnn_with_tf_graph
-import facenet
 
-from src.utils import *
+import _init_paths
+
+from align.detect_face import create_mtcnn
+from src.align_image_mtcnn import align_image_with_mtcnn_with_tf_graph
+from src.utils import load_tf_ssd_detection_graph,run_inference_for_single_image,post_process_ssd_predictions,load_tf_facenet_graph,crop_ssd_prediction,prewhiten,get_face_embeddings,print_recognition_output,draw_detection_box
 
 '''
   Getting all the necessary config variables
@@ -59,20 +60,17 @@ CROP_SSD_PERCENTAGE = float(config.get("DEFAULT","CROP_SSD_PERCENTAGE"))
 IMAGE_SIZE = int(config.get("DEFAULT","IMAGE_SIZE"))
 FACENET_PREDICTION_BATCH_SIZE = int(config.get("DEFAULT","FACENET_PREDICTION_BATCH_SIZE"))
 
+
 if __name__ == "__main__":
 
   with tf.Graph().as_default():
 
-    ### Creating and Loading the Single Shot Detector ###
-    image_tensor, boxes_tensor, scores_tensor, \
-                    classes_tensor, num_detections_tensor = load_tf_ssd_detection_graph(PATH_TO_CKPT)
-
-    gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.6)
-    sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, log_device_placement=False))
+    image_tensor,tensor_dict=load_tf_ssd_detection_graph(PATH_TO_CKPT,input_graph=None)
+    sess = tf.Session()
     with sess.as_default():
 
       ### Creating and Loading MTCNN ###
-      pnet, rnet, onet = align.detect_face.create_mtcnn(sess, None)
+      pnet, rnet, onet = create_mtcnn(sess, None)
 
       ### Creating and Loading the Facenet Graph ###
       images_placeholder, embeddings, phase_train_placeholder = load_tf_facenet_graph(FACENET_MODEL_PATH)
@@ -81,16 +79,14 @@ if __name__ == "__main__":
         initial_inference_start_time = time.time()
 
         image = cv2.imread(SOURCE_IM_PATH)
-        image_np = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) # Convert image to RGB to pass on SSD detector
-        image_np_expanded = np.expand_dims(image_np, axis=0)
-
+        image_np = (cv2.cvtColor(image, cv2.COLOR_BGR2RGB)).astype(np.uint8)  # Convert to RGB and convert to uint8
         start_time_ssd_detection = time.time()
-        (boxes, scores, classes, num_detections) = sess.run(
-                                                            [boxes_tensor, scores_tensor, classes_tensor, num_detections_tensor],
-                                                            feed_dict={image_tensor: image_np_expanded})
+        output_dict = run_inference_for_single_image(sess, image_np, image_tensor, tensor_dict)
         elapsed_time = time.time() - start_time_ssd_detection
+        dets = post_process_ssd_predictions(image_np, output_dict, threshold=0.25)
+
         print('SSD inference time cost: {}'.format(elapsed_time))
-        dets = post_process_ssd_predictions(boxes,scores,classes)
+
         im_height = image.shape[0]
         im_width = image.shape[1]
 
@@ -101,8 +97,7 @@ if __name__ == "__main__":
 
         for detection_id,cur_det in enumerate(dets):
           boxes = cur_det[:4]
-          (ymin, xmin, ymax, xmax) = (boxes[0] * im_height, boxes[1] * im_width,
-                                        boxes[2] * im_height, boxes[3] * im_width)
+          (ymin, xmin, ymax, xmax) = (boxes[0],boxes[1],boxes[2],boxes[3])
           bbox = (xmin, xmax, ymin, ymax)
           bbox_dict[detection_id] = bbox
 

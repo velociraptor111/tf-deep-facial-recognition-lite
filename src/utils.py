@@ -27,7 +27,7 @@ import tensorflow as tf
 import cv2
 import numpy as np
 import facenet
-import align.detect_face
+
 
 
 def filter_ssd_predictions(dets,threshold=0.7):
@@ -88,45 +88,70 @@ def crop_ssd_prediction(xmin,xmax,ymin,ymax,CROP_SSD_PERCENTAGE,im_width,im_heig
 
   return new_xmin,new_xmax,new_ymin,new_ymax
 
-def post_process_ssd_predictions(boxes,scores,classes):
-  '''
-  Combines the numpy arrrays given by the Tensorflow Object Detection API into a single det array
-  for further processing.
+def post_process_ssd_predictions(image_np,output_dict,threshold=0.3):
+  image_width = image_np.shape[1]
+  image_height = image_np.shape[0]
 
-  :param boxes:
-  :param scores:
-  :param classes:
-  :return:
-  '''
-  boxes = np.squeeze(boxes)
-  scores = np.reshape(scores, (scores.shape[1], scores.shape[0]))
-  classes = np.reshape(classes, (classes.shape[1], classes.shape[0]))
+  boxes = np.squeeze(output_dict['detection_boxes'])
 
+  boxes[:,0] = boxes[:,0] * image_height
+  boxes[:,1] = boxes[:,1] * image_width
+  boxes[:,2] = boxes[:,2] * image_height
+  boxes[:,3] = boxes[:,3] * image_width
+
+  scores = np.reshape(output_dict['detection_scores'], (output_dict['detection_scores'].shape[0], 1))
   dets = np.hstack((boxes, scores))
-  dets = np.hstack((dets, classes))
-  dets = filter_ssd_predictions(dets, threshold=0.7)
+  dets = filter_ssd_predictions(dets,threshold)
+
   return dets
 
-def load_tf_ssd_detection_graph(PATH_TO_CKPT):
-  '''
-  Loads the Tensorflow SSD Object Detection API into memory
 
-  :param PATH_TO_CKPT:
-  :return:
-  '''
-  od_graph_def = tf.GraphDef()
-  with tf.gfile.GFile(PATH_TO_CKPT, 'rb') as fid:
-    serialized_graph = fid.read()
-    od_graph_def.ParseFromString(serialized_graph)
-    tf.import_graph_def(od_graph_def, name='')
+def run_inference_for_single_image(sess,image,image_tensor,tensor_dict):
 
-  image_tensor = tf.get_default_graph().get_tensor_by_name('image_tensor:0')
-  boxes_tensor = tf.get_default_graph().get_tensor_by_name('detection_boxes:0')
-  scores_tensor = tf.get_default_graph().get_tensor_by_name('detection_scores:0')
-  classes_tensor = tf.get_default_graph().get_tensor_by_name('detection_classes:0')
-  num_detections_tensor = tf.get_default_graph().get_tensor_by_name('num_detections:0')
+  output_dict = sess.run(tensor_dict,
+                               feed_dict={image_tensor: np.expand_dims(image, 0)})
 
-  return image_tensor,boxes_tensor,scores_tensor,classes_tensor,num_detections_tensor
+      # all outputs are float32 numpy arrays, so convert types as appropriate
+  output_dict['num_detections'] = int(output_dict['num_detections'][0])
+  output_dict['detection_classes'] = output_dict[
+          'detection_classes'][0].astype(np.uint8)
+  output_dict['detection_boxes'] = output_dict['detection_boxes'][0]
+  output_dict['detection_scores'] = output_dict['detection_scores'][0]
+  if 'detection_masks' in output_dict:
+    output_dict['detection_masks'] = output_dict['detection_masks'][0]
+  return output_dict
+
+
+
+
+
+def load_tf_ssd_detection_graph(PATH_TO_FROZEN_GRAPH,input_graph=None):
+
+  if input_graph == None:
+      current_graph = tf.get_default_graph()
+  else:
+      current_graph = input_graph
+
+  with current_graph.as_default(): #Doing this will add whatever operation below into my current maing raph
+    od_graph_def = tf.GraphDef()
+    with tf.gfile.GFile(PATH_TO_FROZEN_GRAPH, 'rb') as fid:
+      serialized_graph = fid.read()
+      od_graph_def.ParseFromString(serialized_graph)
+      tf.import_graph_def(od_graph_def, name='')
+
+    # Get handles to input and output tensors
+    ops = tf.get_default_graph().get_operations()
+    all_tensor_names = {output.name for op in ops for output in op.outputs}
+    tensor_dict = {}
+
+    for key in ['num_detections', 'detection_boxes', 'detection_scores','detection_classes', 'detection_masks']:
+      tensor_name = key + ':0'
+      if tensor_name in all_tensor_names:
+        tensor_dict[key] = tf.get_default_graph().get_tensor_by_name(tensor_name)
+
+    image_tensor = tf.get_default_graph().get_tensor_by_name('image_tensor:0')
+
+    return image_tensor, tensor_dict
 
 def load_tf_facenet_graph(FACENET_MODEL_PATH):
   '''
