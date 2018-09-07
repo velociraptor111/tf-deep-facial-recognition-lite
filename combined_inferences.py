@@ -39,7 +39,7 @@ import cv2
 '''
 import _init_paths
 
-### Facenet  ###
+### Facenet Functions###
 from align.detect_face import create_mtcnn
 
 ### Utility Functions ###
@@ -83,7 +83,7 @@ class Person:
 
 if __name__ == "__main__":
 
-    # Global variable that will hold all the "Recognized Human in the whole lifetime of Videoing"
+    # Global variable that will hold all the "Recognized Human in the whole lifetime of the current recording session"
     Identified_Human_List = []
     with tf.Graph().as_default():
 
