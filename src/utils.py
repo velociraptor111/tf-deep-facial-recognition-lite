@@ -27,9 +27,8 @@ import tensorflow as tf
 import cv2
 import numpy as np
 #Very important to note here that the facenet.py file imported here will be dependant on the init_path supply
-# of where the facenet source code to extract from!
+# of where the facenet source code to extract from! *Ps. script will break when you have manually exported the facenet/src directory ..
 import facenet
-
 
 def filter_ssd_predictions(dets,threshold=0.7):
   '''
@@ -249,3 +248,64 @@ def get_face_embeddings(sess,embeddings,images_placeholder,phase_train_placehold
     print('Calculating image embedding cost: {}'.format(function_timer))
 
   return emb_array
+
+def check_face_bbox_inside(bbox, single_person_detection):
+  '''
+  Check if the bounding box for face lies within the bounding box for the Human Body
+  :param bbox: Tuple (xmin,xmax,ymin,ymax)
+  :param single_person_detection: Tuple (ymin,xmin,ymax,xmax)
+  :return: boolean
+  '''
+  body_ymin = single_person_detection[0]
+  body_xmin = single_person_detection[1]
+  body_ymax = single_person_detection[2]
+  body_xmax = single_person_detection[3]
+
+  if bbox[0] > body_xmin and bbox[0] < body_xmax:
+    if bbox[1] > body_xmin and bbox[1] < body_xmax:
+      if bbox[2] > body_ymin and bbox[2] < body_ymax:
+        if bbox[3] > body_ymin and bbox[3] < body_ymax:
+          return True
+
+  return False
+
+
+def get_body_keypoints_centroid(human, image):
+  '''
+  Return a tuple of int values containing x and y position values for centroid respectively.
+  :param human: A Human object defined in tf_pose/estimator
+  :param image: Numpy array
+  :return: Tuple
+  '''
+
+  image_height = image.shape[0]
+  image_width = image.shape[1]
+  # Need to create a list of tuples containing the (x,y) values for each keypoints
+  keypoints_list = []
+  for key_point_id in human.body_parts.keys():
+    keypoints_list.append([int(human.body_parts[key_point_id].x * image_width + 0.5),
+                           int(human.body_parts[key_point_id].y * image_height + 0.5)])
+  keypoints_list = np.array(keypoints_list)
+  total_body_parts = len(human.body_parts.keys())
+  sum_x = np.sum(keypoints_list[:, 0])
+  sum_y = np.sum(keypoints_list[:, 1])
+  return int(sum_x / total_body_parts), int(sum_y / total_body_parts)
+
+
+def check_pose_centroid_inside(centroid, single_person_detection):
+  '''
+  Return True if the centroid location is within the bounding box of the body.
+  :param centroid: Tuple (x,y)
+  :param single_person_detection: Tuple (ymin,xmin,ymax,xmax)
+  :return: Boolean
+  '''
+  body_ymin = single_person_detection[0]
+  body_xmin = single_person_detection[1]
+  body_ymax = single_person_detection[2]
+  body_xmax = single_person_detection[3]
+
+  if centroid[0] > body_xmin and centroid[0] < body_xmax:
+    if centroid[1] > body_ymin and centroid[1] < body_ymax:
+      return True
+
+  return False

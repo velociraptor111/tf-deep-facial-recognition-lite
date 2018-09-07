@@ -33,13 +33,19 @@ import numpy as np
 import tensorflow as tf
 import cv2
 
+'''
+    Load facenet/src directory to system path
+'''
 import _init_paths
 
-### Facenet and Utility Functions ###
+### Facenet  ###
 from align.detect_face import create_mtcnn
+
+### Utility Functions ###
 from src.align_image_mtcnn import align_image_with_mtcnn_with_tf_graph
 from src.utils import load_tf_ssd_detection_graph,run_inference_for_single_image,post_process_ssd_predictions \
-    ,load_tf_facenet_graph,crop_ssd_prediction,prewhiten,get_face_embeddings,print_recognition_output,draw_detection_box
+    ,load_tf_facenet_graph,crop_ssd_prediction,prewhiten,get_face_embeddings,check_face_bbox_inside,\
+    get_body_keypoints_centroid,check_pose_centroid_inside
 
 ### Tf_Pose Functions ###
 from tf_pose.estimator import TfPoseEstimator
@@ -51,20 +57,15 @@ config.read('config.ini')
 
 # Path to frozen detection graph. This is the actual model that is used for the object detection.
 PATH_TO_CKPT = config.get("DEFAULT","PATH_TO_SSD_CKPT")
-FINAL_DETECTION_PATH = config.get("DEFAULT","PATH_TO_FINAL_DETECTION_DIRECTORY")
 FACENET_MODEL_PATH = config.get("DEFAULT","PATH_TO_FACENET_MODEL")
-CLASSIFIER_PATH = config.get("DEFAULT","PATH_TO_SVM_EMBEDDINGS_CLASSIFIER")
-
-CROP_SSD_PERCENTAGE = float(config.get("DEFAULT","CROP_SSD_PERCENTAGE"))
 IMAGE_SIZE = int(config.get("DEFAULT","IMAGE_SIZE"))
 FACENET_PREDICTION_BATCH_SIZE = int(config.get("DEFAULT","FACENET_PREDICTION_BATCH_SIZE"))
-MAX_FRAME_COUNT = int(config.get("DEFAULT","MAX_FRAME_COUNT"))
 
 CLASSIFIER_PATH_SVM = './trained_svm_knn_face_models/self_images_classifier_v4.pkl'
 CLASSIFIER_PATH_KNN = './trained_svm_knn_face_models/self_images_neighbours_classifier_v4.pkl'
 PATH_TO_PERSON_PB = './model/ssd_mobilenet_v2_coco_2018_03_29/frozen_inference_graph.pb'
 
-class Human:
+class Person:
     def __init__(self,id_name):
         self.name = id_name
         self.face_bbox = []
@@ -77,54 +78,6 @@ class Human:
         else:
             color_pallete = (0,0,255)
         self.color_pallete = color_pallete
-
-
-def check_inside(bbox,single_person_detection):
-    '''
-    Check if the bounding box for face lies within the bounding box for the Human Body
-    :param bbox: xmin,xmax,ymin,ymax
-    :param single_person_detection: ymin,xmin,ymax,xmax
-    :return:
-    '''
-    body_ymin = single_person_detection[0]
-    body_xmin = single_person_detection[1]
-    body_ymax = single_person_detection[2]
-    body_xmax = single_person_detection[3]
-
-    if bbox[0] > body_xmin and bbox[0] < body_xmax:
-        if bbox[1] > body_xmin and bbox[1] < body_xmax:
-            if bbox[2] > body_ymin and bbox[2] < body_ymax:
-                if bbox[3] > body_ymin and bbox[3] < body_ymax:
-                    return True
-
-    return False
-
-
-def get_body_keypoints_centroid(human,image):
-
-    image_height = image.shape[0]
-    image_width = image.shape[1]
-    # Need to create a list of tuples containing the (x,y) values for each keypoints
-    keypoints_list = []
-    for key_point_id in human.body_parts.keys():
-        keypoints_list.append([int(human.body_parts[key_point_id].x * image_width + 0.5),int(human.body_parts[key_point_id].y * image_height + 0.5 )])
-    keypoints_list = np.array(keypoints_list)
-    total_body_parts = len(human.body_parts.keys())
-    sum_x = np.sum(keypoints_list[:,0])
-    sum_y = np.sum(keypoints_list[:,1])
-    return int(sum_x/total_body_parts),int(sum_y/total_body_parts)
-
-def check_pose_centroid_inside(centroid,single_person_detection):
-    body_ymin = single_person_detection[0]
-    body_xmin = single_person_detection[1]
-    body_ymax = single_person_detection[2]
-    body_xmax = single_person_detection[3]
-
-    if centroid[0] > body_xmin and centroid[0] < body_xmax:
-        if centroid[1] > body_ymin and centroid[1] < body_ymax:
-            return True
-
-    return False
 
 
 if __name__ == "__main__":
@@ -273,17 +226,17 @@ if __name__ == "__main__":
                             if not found_recognized_human_bool:
                                 # Create a new human object and append to the human list
                                 print("Creating a new human object . His name is: ", class_names[best_class_indices[i]])
-                                human_obj = Human(class_names[best_class_indices[i]])
+                                human_obj = Person(class_names[best_class_indices[i]])
                                 human_obj.face_bbox = bbox
                                 Identified_Human_List.append(human_obj)
 
                         else:
-                            human_obj = Human("Unknown")
+                            human_obj = Person("Unknown")
                             human_obj.face_bbox = bbox
 
                         ### Associating the detected BODY array with the current ID'ed Person ###
                         for single_person_detection in person_dets:
-                            if check_inside(bbox,single_person_detection):
+                            if check_face_bbox_inside(bbox,single_person_detection):
                                 # Doing this will overwrite the body_bbox detection if there are multiple detections for a single frame
                                 human_obj.body_bbox = single_person_detection
 
