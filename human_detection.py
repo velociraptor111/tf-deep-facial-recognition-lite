@@ -25,49 +25,27 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import os
 import time
-import shutil
-import math
-import pickle
-
 import numpy as np
 import tensorflow as tf
 import cv2
 
-import _init_paths
-from src.align_image_mtcnn import align_image_with_mtcnn_with_tf_graph
-import facenet
-
-from align.detect_face import create_mtcnn
-from src.align_image_mtcnn import align_image_with_mtcnn_with_tf_graph
-from src.utils import load_tf_ssd_detection_graph,run_inference_for_single_image,post_process_ssd_predictions,load_tf_facenet_graph,crop_ssd_prediction,prewhiten,get_face_embeddings,print_recognition_output,draw_detection_box
+from src.utils import load_tf_ssd_detection_graph,run_inference_for_single_image_through_ssd,post_process_ssd_predictions\
+    ,load_tf_facenet_graph,crop_ssd_prediction,prewhiten,get_face_embeddings,print_recognition_output,draw_detection_box
 
 import configparser
 config = configparser.ConfigParser()
 config.read('config.ini')
 
 # Path to frozen detection graph. This is the actual model that is used for the object detection.
-PATH_TO_CKPT = config.get("DEFAULT","PATH_TO_SSD_CKPT")
-FINAL_DETECTION_PATH = config.get("DEFAULT","PATH_TO_FINAL_DETECTION_DIRECTORY")
-FACENET_MODEL_PATH = config.get("DEFAULT","PATH_TO_FACENET_MODEL")
-CLASSIFIER_PATH = config.get("DEFAULT","PATH_TO_SVM_EMBEDDINGS_CLASSIFIER")
-
-CROP_SSD_PERCENTAGE = float(config.get("DEFAULT","CROP_SSD_PERCENTAGE"))
-IMAGE_SIZE = int(config.get("DEFAULT","IMAGE_SIZE"))
-FACENET_PREDICTION_BATCH_SIZE = int(config.get("DEFAULT","FACENET_PREDICTION_BATCH_SIZE"))
-MAX_FRAME_COUNT = int(config.get("DEFAULT","MAX_FRAME_COUNT"))
-
-CLASSIFIER_PATH_SVM = '/Users/petertanugraha/Projects/facenet/svm_classifier_models/peter_classifier.pkl'
-CLASSIFIER_PATH_KNN = '/Users/petertanugraha/Projects/facenet/svm_classifier_models/peter_classifier_k_nearest_neighbours_clf.pkl'
-PATH_TO_CKPT = '/Users/petertanugraha/Downloads/ssd_mobilenet_v2_coco_2018_03_29/frozen_inference_graph.pb'
+PATH_TO_PERSON_DETECTION = config.get("DEFAULT","PATH_TO_PERSON_DETECTION")
 
 if __name__ == "__main__":
 
     with tf.Graph().as_default():
 
         ### Creating and Loading the Single Shot Detector ###
-        image_tensor, tensor_dict = load_tf_ssd_detection_graph(PATH_TO_CKPT, input_graph=None)
+        image_tensor, tensor_dict = load_tf_ssd_detection_graph(PATH_TO_PERSON_DETECTION, input_graph=None)
 
         sess = tf.Session()
         with sess.as_default():
@@ -86,7 +64,7 @@ if __name__ == "__main__":
                 image_np = (cv2.cvtColor(image, cv2.COLOR_BGR2RGB)).astype(np.uint8)
 
                 start_time_ssd_detection = time.time()
-                output_dict = run_inference_for_single_image(sess, image_np, image_tensor, tensor_dict)
+                output_dict = run_inference_for_single_image_through_ssd(sess, image_np, image_tensor, tensor_dict)
                 elapsed_time = time.time() - start_time_ssd_detection
                 # In coco dataset label map is a human being
                 dets = post_process_ssd_predictions(image_np, output_dict, threshold=0.5,detection_classes = [1])

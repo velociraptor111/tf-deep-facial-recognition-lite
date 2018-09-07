@@ -1,5 +1,6 @@
 """
   Script to run face detection and recognition, using SSD Multibox Detector,MTCNN and Facenet for recognition.
+  Also added Posenet for human keypoints detection
   Written by: Peter Tanugraha
 """
 
@@ -56,14 +57,14 @@ config = configparser.ConfigParser()
 config.read('config.ini')
 
 # Path to frozen detection graph. This is the actual model that is used for the object detection.
-PATH_TO_CKPT = config.get("DEFAULT","PATH_TO_SSD_CKPT")
+PATH_TO_FACE_DETECTION = config.get("DEFAULT","PATH_TO_FACE_DETECTION")
+PATH_TO_PERSON_DETECTION = config.get("DEFAULT","PATH_TO_PERSON_DETECTION")
 FACENET_MODEL_PATH = config.get("DEFAULT","PATH_TO_FACENET_MODEL")
 IMAGE_SIZE = int(config.get("DEFAULT","IMAGE_SIZE"))
 FACENET_PREDICTION_BATCH_SIZE = int(config.get("DEFAULT","FACENET_PREDICTION_BATCH_SIZE"))
+CLASSIFIER_PATH_SVM = config.get("DEFAULT","PATH_TO_SVM_CLASSIFIER")
+CLASSIFIER_PATH_KNN = config.get("DEFAULT","PATH_TO_KNN_CLASSIFIER")
 
-CLASSIFIER_PATH_SVM = './trained_svm_knn_face_models/self_images_classifier_v4.pkl'
-CLASSIFIER_PATH_KNN = './trained_svm_knn_face_models/self_images_neighbours_classifier_v4.pkl'
-PATH_TO_PERSON_PB = './model/ssd_mobilenet_v2_coco_2018_03_29/frozen_inference_graph.pb'
 
 class Person:
     def __init__(self,id_name):
@@ -88,11 +89,11 @@ if __name__ == "__main__":
 
         ### Loading Face Detector ###
         Face_Detection_Graph = tf.Graph()
-        image_tensor, tensor_dict = load_tf_ssd_detection_graph(PATH_TO_CKPT, input_graph=Face_Detection_Graph)
+        image_tensor, tensor_dict = load_tf_ssd_detection_graph(PATH_TO_FACE_DETECTION, input_graph=Face_Detection_Graph)
         face_detection_sess = tf.Session(graph=Face_Detection_Graph)
 
         ### Loading Person Detector ###
-        person_image_tensor, person_tensor_dict = load_tf_ssd_detection_graph(PATH_TO_PERSON_PB, input_graph=None)
+        person_image_tensor, person_tensor_dict = load_tf_ssd_detection_graph(PATH_TO_PERSON_DETECTION, input_graph=None)
         main_sess = tf.Session()
 
         ### Loading the SVM Classifier for Face ID classification ###

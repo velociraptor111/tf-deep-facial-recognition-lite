@@ -76,7 +76,7 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
 
 def get_graph_path(model_name):
     dyn_graph_path = {
-        'cmu': 'graph/cmu/graph_opt.pb',
+        'cmu': 'tf_pose_graph/cmu/graph_opt.pb',
         'mobilenet_thin': 'tf_pose_graph/mobilenet_thin/graph_opt.pb'
     }
 

@@ -26,7 +26,12 @@ import tensorflow as tf
 import cv2
 
 import _init_paths
-from src.utils import post_process_ssd_predictions,run_inference_for_single_image,load_tf_ssd_detection_graph
+from src.utils import post_process_ssd_predictions,run_inference_for_single_image_through_ssd,load_tf_ssd_detection_graph
+
+import configparser
+config = configparser.ConfigParser()
+config.read('config.ini')
+
 
 def run_tf_object_detection_video(input_graph,image_tensor, tensor_dict,path_to_video=None):
 
@@ -44,7 +49,7 @@ def run_tf_object_detection_video(input_graph,image_tensor, tensor_dict,path_to_
         _, image = cap.read()
 
         image_np = (cv2.cvtColor(image, cv2.COLOR_BGR2RGB)).astype(np.uint8) #Convert to RGB and convert to uint8
-        output_dict = run_inference_for_single_image(sess,image_np,image_tensor,tensor_dict)
+        output_dict = run_inference_for_single_image_through_ssd(sess,image_np,image_tensor,tensor_dict)
         dets = post_process_ssd_predictions(image_np,output_dict,threshold=0.25)
 
         for cur_det in dets:
@@ -66,11 +71,11 @@ def run_tf_object_detection_video(input_graph,image_tensor, tensor_dict,path_to_
   return
 
 if __name__ == "__main__":
-  PATH_TO_FROZEN_GRAPH = './model/ssd_mobilenet_v1_focal_loss_face_mark_2.pb'
-  PATH_TO_VIDEO = '/Users/petertanugraha/Projects/tf-pose-estimation/test_video/uoft_lecture_trimmed.mp4'
+  PATH_TO_FACE_DETECTION = config.get("DEFAULT", "PATH_TO_FACE_DETECTION")
+  # PATH_TO_VIDEO = '/Users/petertanugraha/Projects/tf-pose-estimation/test_video/uoft_lecture_trimmed.mp4'
 
   main_graph = tf.Graph()
-  image_tensor,tensor_dict=load_tf_ssd_detection_graph(PATH_TO_FROZEN_GRAPH,input_graph=main_graph)
+  image_tensor,tensor_dict=load_tf_ssd_detection_graph(PATH_TO_FACE_DETECTION,input_graph=main_graph)
   run_tf_object_detection_video(main_graph,image_tensor, tensor_dict,path_to_video=None)
 
 

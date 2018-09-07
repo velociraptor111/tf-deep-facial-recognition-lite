@@ -39,6 +39,7 @@ if __name__ == "__main__":
 
     ssd_model_path = os.path.join(os.getcwd(),'model')
     facenet_model_path = os.path.join(os.getcwd(),'facenet','models')
+
     temp_zip_directory = os.path.join(os.getcwd(),'tmp_zip_folder')
     src_ssd_path = os.path.join(temp_zip_directory,'tf-deep-facial-recognition-lite-models','ssd_model')
     zip_file_destination = os.path.join(os.getcwd(), 'tf-deep-facial-recognition-lite-models.zip')
