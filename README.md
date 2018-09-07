@@ -2,7 +2,7 @@
 Object Detection and Recognition pipeline using Single Shot Multibox Detector (SSD) with MobileNet as the feature extractor, and FaceNet to recognize faces. The 'lite' in the repository name indicates that this repo was built with the intention of running detection solely on CPU for real time purposes. Using GPU however, will definitely reduce the lag in detecting and recognizing faces for real time tasks.
 
 ## Prerequisites
-Tested with Python3 only. 
+Tested with Python3.6 only. 
 It is HIGHLY recommended that you create a fresh new conda environment, and use anaconda for managing the python packages.
 - psutil==5.4.6
 - tqdm==4.24.0
@@ -20,10 +20,16 @@ It is HIGHLY recommended that you create a fresh new conda environment, and use 
 - scikit_learn==0.19.2
 
 ## Installation
+This step is optional if you want to work on a new conda environment.
+```buildoutcfg
+conda create -n py36 python=3.6
+source activate py36
+```
+Follow these steps
 ```buildoutcfg
 git clone https://github.com/velociraptor111/tf-deep-facial-recognition-lite.git
 cd tf-deep-facial-recognition-lite
-pip install requirements.txt
+pip install -r requirements.txt
 python download_model_checkpoints.py
 ```
 ## Demo Scripts
