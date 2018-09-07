@@ -95,6 +95,15 @@ def crop_ssd_prediction(xmin,xmax,ymin,ymax,CROP_SSD_PERCENTAGE,im_width,im_heig
   return new_xmin,new_xmax,new_ymin,new_ymax
 
 def post_process_ssd_predictions(image_np,output_dict,threshold=0.3,detection_classes=None):
+  '''
+  Filter results of output from Single Shot Detectors. Mainly only keeping detection values with confidence above a
+  certain threshold and also filtering the class of the detections.
+  :param image_np: Multi dimensional image array
+  :param output_dict: Output dictionary produced from the Single Shot Detector
+  :param threshold: The minimum confidence value to keep detections
+  :param detection_classes: The class of the detection (e.g A human, chair,sofa , etc.)
+  :return: Squashed filtered array
+  '''
   image_width = image_np.shape[1]
   image_height = image_np.shape[0]
 
@@ -128,7 +137,15 @@ def post_process_ssd_predictions(image_np,output_dict,threshold=0.3,detection_cl
   return dets
 
 
-def run_inference_for_single_image(sess,image,image_tensor,tensor_dict):
+def run_inference_for_single_image_through_ssd(sess,image,image_tensor,tensor_dict):
+  '''
+  Do a single inference of an image passing through a Single Shot Detector.
+  :param sess: A Tensorflow Session object. Session should contain the respective Tensorflow Graph that is being inferred.
+  :param image: Multi dimensional numpy array
+  :param image_tensor: Tensor variable used to receive in the images
+  :param tensor_dict: Dict containing the output values
+  :return: Dict with detections
+  '''
 
   output_dict = sess.run(tensor_dict,
                                feed_dict={image_tensor: np.expand_dims(image, 0)})
@@ -148,6 +165,14 @@ def run_inference_for_single_image(sess,image,image_tensor,tensor_dict):
 
 
 def load_tf_ssd_detection_graph(PATH_TO_FROZEN_GRAPH,input_graph=None):
+  '''
+  Loading the SSD graph into memory. If given an input graph, will put the SSD into that specified graph,
+  else will grab the current graph using tf.get_default_graph().
+  Right now there are only two graph, the "Main" and "Face Detection Graph"
+  :param PATH_TO_FROZEN_GRAPH: String variable which contains path to the saved frozen graph file.
+  :param input_graph: Tf.Graph variable
+  :return: Returns Tensorflow variables which will be supplied to sess.run later on when run for inference.
+  '''
 
   if input_graph == None:
       current_graph = tf.get_default_graph()

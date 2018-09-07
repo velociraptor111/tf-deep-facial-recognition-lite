@@ -43,7 +43,7 @@ from align.detect_face import create_mtcnn
 
 ### Utility Functions ###
 from src.align_image_mtcnn import align_image_with_mtcnn_with_tf_graph
-from src.utils import load_tf_ssd_detection_graph,run_inference_for_single_image,post_process_ssd_predictions \
+from src.utils import load_tf_ssd_detection_graph,run_inference_for_single_image_through_ssd,post_process_ssd_predictions \
     ,load_tf_facenet_graph,crop_ssd_prediction,prewhiten,get_face_embeddings,check_face_bbox_inside,\
     get_body_keypoints_centroid,check_pose_centroid_inside
 
@@ -142,11 +142,11 @@ if __name__ == "__main__":
 
             with face_detection_sess.as_default():
                 # Face Detection INFERENCE
-                output_dict = run_inference_for_single_image(face_detection_sess, image_np, image_tensor, tensor_dict)
+                output_dict = run_inference_for_single_image_through_ssd(face_detection_sess, image_np, image_tensor, tensor_dict)
 
             with main_sess.as_default():
                 # Body Detection INFERENCE
-                output_dict_person = run_inference_for_single_image(main_sess, image_np, person_image_tensor, person_tensor_dict)
+                output_dict_person = run_inference_for_single_image_through_ssd(main_sess, image_np, person_image_tensor, person_tensor_dict)
 
                 # Post process the Face and Body results
                 face_dets = post_process_ssd_predictions(image_np, output_dict, threshold=0.25)
@@ -245,7 +245,6 @@ if __name__ == "__main__":
                             if len(human_obj.body_bbox) != 0: # Sometimes the person may have a Face but no Pose for this frame ... ###
                                 if check_pose_centroid_inside(body_pose_centroid,human_obj.body_bbox):
                                     human_obj.body_pose = humans[idx]
-                                    print(bool(human_obj.body_pose))
 
                         single_frame_human_list.append(human_obj)
 
