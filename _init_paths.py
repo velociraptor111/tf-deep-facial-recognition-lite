@@ -14,4 +14,7 @@ def add_path(path):
 
 cur_dir = os.path.dirname(__file__)
 facenet_path = os.path.join(cur_dir,'facenet','src')
+tf_pose_path = '/Users/petertanugraha/Projects/tf-pose-estimation'
+
 add_path(facenet_path)
+add_path(tf_pose_path)

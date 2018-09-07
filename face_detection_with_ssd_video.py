@@ -67,10 +67,10 @@ def run_tf_object_detection_video(input_graph,image_tensor, tensor_dict,path_to_
 
 if __name__ == "__main__":
   PATH_TO_FROZEN_GRAPH = './model/ssd_mobilenet_v1_focal_loss_face_mark_2.pb'
-  PATH_TO_VIDEO = '/Users/petertanugraha/Projects/tf-pose-estimation/test_video/Chair_stand_original_trimmed.mp4'
+  PATH_TO_VIDEO = '/Users/petertanugraha/Projects/tf-pose-estimation/test_video/uoft_lecture_trimmed.mp4'
 
   main_graph = tf.Graph()
   image_tensor,tensor_dict=load_tf_ssd_detection_graph(PATH_TO_FROZEN_GRAPH,input_graph=main_graph)
-  run_tf_object_detection_video(main_graph,image_tensor, tensor_dict,path_to_video=PATH_TO_VIDEO)
+  run_tf_object_detection_video(main_graph,image_tensor, tensor_dict,path_to_video=None)
 
 

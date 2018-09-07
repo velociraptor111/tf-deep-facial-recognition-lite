@@ -26,8 +26,9 @@ import time
 import tensorflow as tf
 import cv2
 import numpy as np
+#Very important to note here that the facenet.py file imported here will be dependant on the init_path supply
+# of where the facenet source code to extract from!
 import facenet
-
 
 
 def filter_ssd_predictions(dets,threshold=0.7):
@@ -63,7 +64,7 @@ def draw_detection_box(image,ids,bbox_dict,class_names,best_class_indices,best_c
     else:
       cv2.putText(image, 'Unknown Face', (int(bbox[0]), int(bbox[2]) + 10), 0, 0.8, (0, 0, 255),thickness=2)
 
-def crop_ssd_prediction(xmin,xmax,ymin,ymax,CROP_SSD_PERCENTAGE,im_width,im_height):
+def crop_ssd_prediction(xmin,xmax,ymin,ymax,CROP_SSD_PERCENTAGE,im_width,im_height,crop_ssd_percentage_x=None,crop_ssd_percentage_y=None):
   '''
   Cropping the detected ssd bounding box from the given image with an additional specified margin percentage.
   Special care has to be taken to ensure that the cropped box still lies within the image
@@ -79,8 +80,14 @@ def crop_ssd_prediction(xmin,xmax,ymin,ymax,CROP_SSD_PERCENTAGE,im_width,im_heig
   '''
   xWidth = xmax - xmin
   yHeight = ymax - ymin
-  delta_x = int(CROP_SSD_PERCENTAGE * xWidth)
-  delta_y = int(CROP_SSD_PERCENTAGE * yHeight)
+
+  if crop_ssd_percentage_x == None and crop_ssd_percentage_y == None:
+    delta_x = int(CROP_SSD_PERCENTAGE * xWidth)
+    delta_y = int(CROP_SSD_PERCENTAGE * yHeight)
+  else:
+    delta_x = int(crop_ssd_percentage_x * xWidth)
+    delta_y = int(crop_ssd_percentage_y * yHeight)
+
   new_xmin = max(0, int(xmin - delta_x))
   new_xmax = min(int(xmax + delta_x), im_width)
   new_ymin = max(0, int(ymin - delta_y))
@@ -88,19 +95,35 @@ def crop_ssd_prediction(xmin,xmax,ymin,ymax,CROP_SSD_PERCENTAGE,im_width,im_heig
 
   return new_xmin,new_xmax,new_ymin,new_ymax
 
-def post_process_ssd_predictions(image_np,output_dict,threshold=0.3):
+def post_process_ssd_predictions(image_np,output_dict,threshold=0.3,detection_classes=None):
   image_width = image_np.shape[1]
   image_height = image_np.shape[0]
 
-  boxes = np.squeeze(output_dict['detection_boxes'])
+  if detection_classes == None:
+    boxes = np.squeeze(output_dict['detection_boxes'])
+    boxes[:,0] = boxes[:,0] * image_height
+    boxes[:,1] = boxes[:,1] * image_width
+    boxes[:,2] = boxes[:,2] * image_height
+    boxes[:,3] = boxes[:,3] * image_width
+    scores = np.reshape(output_dict['detection_scores'], (output_dict['detection_scores'].shape[0], 1))
+    dets = np.hstack((boxes, scores))
+  else:
+    final_class_filtered_index = []
+    for cur_class in detection_classes:
+      final_class_filtered_index.append(np.where(output_dict['detection_classes'] == cur_class)[0])
 
-  boxes[:,0] = boxes[:,0] * image_height
-  boxes[:,1] = boxes[:,1] * image_width
-  boxes[:,2] = boxes[:,2] * image_height
-  boxes[:,3] = boxes[:,3] * image_width
+    boxes = np.squeeze(output_dict['detection_boxes'])
+    boxes = boxes[final_class_filtered_index]
+    boxes[:, 0] = boxes[:, 0] * image_height
+    boxes[:, 1] = boxes[:, 1] * image_width
+    boxes[:, 2] = boxes[:, 2] * image_height
+    boxes[:, 3] = boxes[:, 3] * image_width
 
-  scores = np.reshape(output_dict['detection_scores'], (output_dict['detection_scores'].shape[0], 1))
-  dets = np.hstack((boxes, scores))
+    conf_scores = output_dict['detection_scores']
+    conf_scores = conf_scores[final_class_filtered_index]
+    scores = np.reshape(conf_scores, (conf_scores.shape[0], 1))
+    dets = np.hstack((boxes, scores))
+
   dets = filter_ssd_predictions(dets,threshold)
 
   return dets

@@ -58,6 +58,9 @@ IMAGE_SIZE = int(config.get("DEFAULT","IMAGE_SIZE"))
 FACENET_PREDICTION_BATCH_SIZE = int(config.get("DEFAULT","FACENET_PREDICTION_BATCH_SIZE"))
 MAX_FRAME_COUNT = int(config.get("DEFAULT","MAX_FRAME_COUNT"))
 
+CLASSIFIER_PATH_SVM = '/Users/petertanugraha/Projects/facenet/svm_classifier_models/peter_classifier.pkl'
+CLASSIFIER_PATH_KNN = '/Users/petertanugraha/Projects/facenet/svm_classifier_models/peter_classifier_k_nearest_neighbours_clf.pkl'
+
 if __name__ == "__main__":
 
     with tf.Graph().as_default():
@@ -79,6 +82,8 @@ if __name__ == "__main__":
 
             while cap.isOpened():
                 _, image = cap.read()
+                image = image[..., ::-1, :]
+                image_display = image.copy()
 
                 initial_inference_start_time = time.time()
                 # Both the SSD and Facenet also uses np.uint8 and RGB images for both!
@@ -90,9 +95,6 @@ if __name__ == "__main__":
                 dets = post_process_ssd_predictions(image_np, output_dict, threshold=0.25)
                 print('SSD inference time cost: {}'.format(elapsed_time))
 
-                im_height = image.shape[0]
-                im_width = image.shape[1]
-
                 bbox_dict = {}
                 ids = []
                 images_array = []
@@ -103,9 +105,10 @@ if __name__ == "__main__":
                                                 boxes[2], boxes[3])
                     bbox = (xmin, xmax, ymin, ymax)
                     new_xmin, new_xmax, new_ymin, new_ymax = crop_ssd_prediction(xmin, xmax, ymin, ymax,
-                                                                                 CROP_SSD_PERCENTAGE, im_width,
-                                                                                 im_height)
+                                                                                 None, image_np.shape[1],
+                                                                                 image_np.shape[0],0.5,0.3)
                     roi_cropped_rgb = image_np[new_ymin:new_ymax, new_xmin:new_xmax]
+                    roi_cropped_rgb = cv2.resize(roi_cropped_rgb, (250, 250))
                     faces_roi, _ = align_image_with_mtcnn_with_tf_graph(roi_cropped_rgb, pnet, rnet, onet,
                                                                         image_size=IMAGE_SIZE)
 
@@ -121,21 +124,37 @@ if __name__ == "__main__":
                                                 nrof_images, nrof_batches_per_epoch, FACENET_PREDICTION_BATCH_SIZE,
                                                 images_array)
 
-                ### Loading the SVM classifier ###
-                with open(CLASSIFIER_PATH, 'rb') as infile:
+                ### Loading the SVM Classifier ###
+                with open(CLASSIFIER_PATH_SVM, 'rb') as infile:
                     (model, class_names) = pickle.load(infile)
+
+                ### Loading the KNN Classifier ###
+                with open(CLASSIFIER_PATH_KNN, 'rb') as infile:
+                    knn_model = pickle.load(infile)
+
                 if emb_array.shape[0] != 0:
+                    distances, indices = knn_model.kneighbors(emb_array)
+
                     predictions = model.predict_proba(emb_array)
                     best_class_indices = np.argmax(predictions, axis=1)
                     best_class_probabilities = predictions[np.arange(len(best_class_indices)), best_class_indices]
 
-                    elapsed_inference_time = time.time() - initial_inference_start_time
-                    print('Total inference time cost: {}'.format(elapsed_inference_time))
+                    average_distance_array = np.mean(distances,axis=1)
 
-                    print_recognition_output(best_class_indices, class_names, best_class_probabilities,
-                                             recognition_threshold=0.25)
-                    draw_detection_box(image, ids, bbox_dict, class_names, best_class_indices, best_class_probabilities,threshold=0.8)
-                cv2.imshow('full-face-detection-pipeline', image)
+                    print("Average distance is: ", average_distance_array)
+                    for i,id in enumerate(ids):
+                        bbox = bbox_dict[id]
+                        cv2.rectangle(image_display, (int(bbox[0]), int(bbox[2])), (int(bbox[1]), int(bbox[3])),
+                                      (255, 0, 0), 2)
+
+                        if average_distance_array[i] < 0.85:
+                            cv2.putText(image_display, class_names[best_class_indices[i]], (int(bbox[0]), int(bbox[2]) + 10), 0,
+                                        0.8, (0, 255, 0), thickness=2)
+                        else:
+                            cv2.putText(image_display, 'Unknown Face', (int(bbox[0]), int(bbox[2]) + 10), 0, 0.8,
+                                        (0, 0, 255), thickness=2)
+
+                cv2.imshow('full-face-detection-pipeline', image_display)
                 if cv2.waitKey(1) == 27:
                     break
 

@@ -58,6 +58,10 @@ IMAGE_SIZE = int(config.get("DEFAULT","IMAGE_SIZE"))
 FACENET_PREDICTION_BATCH_SIZE = int(config.get("DEFAULT","FACENET_PREDICTION_BATCH_SIZE"))
 MAX_FRAME_COUNT = int(config.get("DEFAULT","MAX_FRAME_COUNT"))
 
+CLASSIFIER_PATH_SVM = '/Users/petertanugraha/Projects/facenet/svm_classifier_models/peter_classifier.pkl'
+CLASSIFIER_PATH_KNN = '/Users/petertanugraha/Projects/facenet/svm_classifier_models/peter_classifier_k_nearest_neighbours_clf.pkl'
+PATH_TO_CKPT = '/Users/petertanugraha/Downloads/ssd_mobilenet_v2_coco_2018_03_29/frozen_inference_graph.pb'
+
 if __name__ == "__main__":
 
     with tf.Graph().as_default():
@@ -67,11 +71,6 @@ if __name__ == "__main__":
 
         sess = tf.Session()
         with sess.as_default():
-            ### Creating and Loading MTCNN ###
-            pnet, rnet, onet = create_mtcnn(sess, None)
-            ### Creating and Loading the Facenet Graph ###
-            images_placeholder, embeddings, phase_train_placeholder = load_tf_facenet_graph(FACENET_MODEL_PATH)
-
             cap = cv2.VideoCapture(0)
 
             if cap.isOpened() is False:
@@ -79,6 +78,8 @@ if __name__ == "__main__":
 
             while cap.isOpened():
                 _, image = cap.read()
+                image = image[..., ::-1, :]
+                image_display = image.copy()
 
                 initial_inference_start_time = time.time()
                 # Both the SSD and Facenet also uses np.uint8 and RGB images for both!
@@ -87,55 +88,18 @@ if __name__ == "__main__":
                 start_time_ssd_detection = time.time()
                 output_dict = run_inference_for_single_image(sess, image_np, image_tensor, tensor_dict)
                 elapsed_time = time.time() - start_time_ssd_detection
-                dets = post_process_ssd_predictions(image_np, output_dict, threshold=0.25)
+                # In coco dataset label map is a human being
+                dets = post_process_ssd_predictions(image_np, output_dict, threshold=0.5,detection_classes = [1])
                 print('SSD inference time cost: {}'.format(elapsed_time))
-
-                im_height = image.shape[0]
-                im_width = image.shape[1]
-
-                bbox_dict = {}
-                ids = []
-                images_array = []
 
                 for detection_id, cur_det in enumerate(dets):
                     boxes = cur_det[:4]
                     (ymin, xmin, ymax, xmax) = (boxes[0], boxes[1],
                                                 boxes[2], boxes[3])
-                    bbox = (xmin, xmax, ymin, ymax)
-                    new_xmin, new_xmax, new_ymin, new_ymax = crop_ssd_prediction(xmin, xmax, ymin, ymax,
-                                                                                 CROP_SSD_PERCENTAGE, im_width,
-                                                                                 im_height)
-                    roi_cropped_rgb = image_np[new_ymin:new_ymax, new_xmin:new_xmax]
-                    faces_roi, _ = align_image_with_mtcnn_with_tf_graph(roi_cropped_rgb, pnet, rnet, onet,
-                                                                        image_size=IMAGE_SIZE)
+                    cv2.rectangle(image_display, (int(xmin), int(ymin)), (int(xmax), int(ymax)),
+                                  (255, 0, 0), 2)
 
-                    if len(faces_roi) != 0:  # This is either a face or not a face
-                        faces_roi = faces_roi[0]
-                        images_array.append(prewhiten(faces_roi))
-                        ids.append(detection_id)
-                        bbox_dict[detection_id] = bbox
-
-                nrof_images = len(bbox_dict)
-                nrof_batches_per_epoch = int(math.ceil(1.0 * nrof_images / FACENET_PREDICTION_BATCH_SIZE))
-                emb_array = get_face_embeddings(sess, embeddings, images_placeholder, phase_train_placeholder,
-                                                nrof_images, nrof_batches_per_epoch, FACENET_PREDICTION_BATCH_SIZE,
-                                                images_array)
-
-                ### Loading the SVM classifier ###
-                with open(CLASSIFIER_PATH, 'rb') as infile:
-                    (model, class_names) = pickle.load(infile)
-                if emb_array.shape[0] != 0:
-                    predictions = model.predict_proba(emb_array)
-                    best_class_indices = np.argmax(predictions, axis=1)
-                    best_class_probabilities = predictions[np.arange(len(best_class_indices)), best_class_indices]
-
-                    elapsed_inference_time = time.time() - initial_inference_start_time
-                    print('Total inference time cost: {}'.format(elapsed_inference_time))
-
-                    print_recognition_output(best_class_indices, class_names, best_class_probabilities,
-                                             recognition_threshold=0.25)
-                    draw_detection_box(image, ids, bbox_dict, class_names, best_class_indices, best_class_probabilities,threshold=0.8)
-                cv2.imshow('full-face-detection-pipeline', image)
+                cv2.imshow('full-face-detection-pipeline', image_display)
                 if cv2.waitKey(1) == 27:
                     break
 
