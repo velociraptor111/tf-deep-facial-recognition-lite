@@ -8,6 +8,8 @@ facenet/models
 final_detection/
 images/
 .DS_Store
+datasets/
+trained_svm_knn_face_models/
 
 # Ignore any potentials temporary folders
 temp_roi/

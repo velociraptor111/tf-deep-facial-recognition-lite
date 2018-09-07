@@ -38,7 +38,8 @@ import _init_paths
 ### Facenet and Utility Functions ###
 from align.detect_face import create_mtcnn
 from src.align_image_mtcnn import align_image_with_mtcnn_with_tf_graph
-from src.utils import load_tf_ssd_detection_graph,run_inference_for_single_image,post_process_ssd_predictions,load_tf_facenet_graph,crop_ssd_prediction,prewhiten,get_face_embeddings,print_recognition_output,draw_detection_box
+from src.utils import load_tf_ssd_detection_graph,run_inference_for_single_image,post_process_ssd_predictions \
+    ,load_tf_facenet_graph,crop_ssd_prediction,prewhiten,get_face_embeddings,print_recognition_output,draw_detection_box
 
 ### Tf_Pose Functions ###
 from tf_pose.estimator import TfPoseEstimator
@@ -59,11 +60,9 @@ IMAGE_SIZE = int(config.get("DEFAULT","IMAGE_SIZE"))
 FACENET_PREDICTION_BATCH_SIZE = int(config.get("DEFAULT","FACENET_PREDICTION_BATCH_SIZE"))
 MAX_FRAME_COUNT = int(config.get("DEFAULT","MAX_FRAME_COUNT"))
 
-# CLASSIFIER_PATH_SVM = '/Users/petertanugraha/Projects/facenet/svm_classifier_models/peter_classifier.pkl'
-# CLASSIFIER_PATH_KNN = '/Users/petertanugraha/Projects/facenet/svm_classifier_models/peter_classifier_k_nearest_neighbours_clf.pkl'
-CLASSIFIER_PATH_SVM = '/Users/petertanugraha/Projects/facenet/svm_classifier_models/self_images_classifier_v4.pkl'
-CLASSIFIER_PATH_KNN = '/Users/petertanugraha/Projects/facenet/svm_classifier_models/self_images_neighbours_classifier_v4.pkl'
-PATH_TO_PERSON_PB = '/Users/petertanugraha/Downloads/ssd_mobilenet_v2_coco_2018_03_29/frozen_inference_graph.pb'
+CLASSIFIER_PATH_SVM = './trained_svm_knn_face_models/self_images_classifier_v4.pkl'
+CLASSIFIER_PATH_KNN = './trained_svm_knn_face_models/self_images_neighbours_classifier_v4.pkl'
+PATH_TO_PERSON_PB = './model/ssd_mobilenet_v2_coco_2018_03_29/frozen_inference_graph.pb'
 
 class Human:
     def __init__(self,id_name):
@@ -293,12 +292,17 @@ if __name__ == "__main__":
                             if len(human_obj.body_bbox) != 0: # Sometimes the person may have a Face but no Pose for this frame ... ###
                                 if check_pose_centroid_inside(body_pose_centroid,human_obj.body_bbox):
                                     human_obj.body_pose = humans[idx]
+                                    print(bool(human_obj.body_pose))
 
                         single_frame_human_list.append(human_obj)
 
                     print("There are ", len(single_frame_human_list) , "human beings in the frame that can be identified.")
+
+                    '''
+                        Will only display on screen if Face is Detected and Recognized, Body is Detected and Pose is Detected
+                    '''
                     for human_obj in single_frame_human_list:
-                        if len(human_obj.body_bbox) != 0 and len(human_obj.face_bbox) != 0 and human_obj.body_pose != False :
+                        if len(human_obj.body_bbox) != 0 and len(human_obj.face_bbox) != 0 and bool(human_obj.body_pose) != False :
                             color_pallete = human_obj.color_pallete
                             # Draw the human pose
                             image_display = TfPoseEstimator.draw_humans(image_display, [human_obj.body_pose], imgcopy=False)
