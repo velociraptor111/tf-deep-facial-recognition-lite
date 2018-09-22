@@ -31,6 +31,29 @@ class CocoPart(Enum):
     LEar = 17
     Background = 18
 
+# Define mapping dictionary
+coco_part_name_mapping = {}
+
+coco_part_name_mapping[0] = 'Nose'
+coco_part_name_mapping[1] = 'Neck'
+coco_part_name_mapping[2] = 'RShoulder'
+coco_part_name_mapping[3] = 'RElbow'
+coco_part_name_mapping[4] = 'RWrist'
+coco_part_name_mapping[5] = 'LShoulder'
+coco_part_name_mapping[6] = 'LElbow'
+coco_part_name_mapping[7] = 'LWrist'
+coco_part_name_mapping[8] = 'RHip'
+coco_part_name_mapping[9] = 'RKnee'
+coco_part_name_mapping[10] = 'RAnkle'
+coco_part_name_mapping[11] = 'LHip'
+coco_part_name_mapping[12] = 'LKnee'
+coco_part_name_mapping[13] = 'LAnkle'
+coco_part_name_mapping[14] = 'REye'
+coco_part_name_mapping[15] = 'LEye'
+coco_part_name_mapping[16] = 'REar'
+coco_part_name_mapping[17] = 'LEar'
+coco_part_name_mapping[18] = 'Background'
+
 
 class MPIIPart(Enum):
     RAnkle = 0

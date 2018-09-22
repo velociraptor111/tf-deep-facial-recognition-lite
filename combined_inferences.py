@@ -121,7 +121,7 @@ if __name__ == "__main__":
 
         while cap.isOpened():
             _, image = cap.read()
-            # Convert image from BGR to RGB color scheme
+            # Flipping the images in the horizontal direction!
             image = image[..., ::-1, :]
             # This variable is used to be drawn
             image_display = image.copy()
